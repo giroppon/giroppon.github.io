@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Door Quest</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0;height:100%;background:#111;color:#fff;font-family:-apple-system,"Hiragino Sans",sans-serif;font-size:14px}
+#app{position:relative;width:100%;max-width:360px;height:100%;max-height:680px;margin:0 auto;background:#000;overflow:hidden}
+.st,.box{position:absolute;left:20px;right:20px;border:2px solid #fff;border-radius:4px;background:#000;white-space:pre-wrap;box-sizing:border-box}
+.st{height:62px;padding:2px 10px;line-height:1.35;font-size:13px;overflow:hidden}
+.box{bottom:60px;padding:10px;line-height:1.5;overflow:auto}
+.sh{animation:sh .06s 3 alternate}@keyframes sh{to{transform:translateY(5px)}}
+#tb{position:absolute;left:0;right:0;bottom:0;height:44px;background:#1f1f1f;display:flex;justify-content:space-around;align-items:center}
+button{background:none;border:0;color:#fff;font-size:17px;padding:8px 18px}button:disabled{opacity:.3}
+#cb{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:16px}
+#cb button{width:200px;height:44px;border:2px solid #fff;border-radius:4px;font-weight:bold;font-size:14px}
+input{background:#000;color:#fff;border:2px solid #fff;border-radius:4px;padding:5px;font-size:14px;width:140px;margin-top:12px}
+#er{color:#fff;margin-top:8px}
+</style></head><body><div id="app"></div>
+<script>
+const $=s=>document.querySelector(s),r=n=>Math.floor(Math.random()*n),T0=Math.trunc,KEY='textrpg05';
+const E=`ミューラーバ,8,9,5,4,6,16,3
+ヘルクロウ,9,10,6,6,7,24,3
+ダイナラビ,10,12,8,5,9,32,1
+グレムリン,17,20,9,10,10,72,3
+ウォールトード,25,24,12,12,12,76,1
+サベージ,40,27,25,11,14,80,3
+スケルトン,50,28,4,11,16,92,3
+アイアンクラブ,28,32,60,12,18,96,1
+ミュードッグ,40,42,22,16,12,116,3
+てつのきし,55,47,45,10,19,120,1
+ウォーエイプ,50,55,25,21,20,140,3
+サンドスクイド,38,49,37,18,22,144,3
+ヘルクラブ,40,50,110,19,25,152,1
+ベアマン,50,69,45,10,30,176,3
+くびきり,45,68,55,24,34,196,3
+ビッグボア,40,75,52,26,35,204,3
+アイアンヒドラ,80,80,60,40,36,216,1
+マンティスコング,54,65,45,30,39,228,3
+ゴーゴン,50,68,150,25,41,232,1
+おろち,60,72,50,32,44,236,3
+サンドウォーム,135,85,40,32,42,240,3
+ハルピュア,100,69,60,33,45,244,2
+デモングリフ,90,68,40,60,48,248,3
+くろきし,61,80,100,23,51,260,1
+サテュロス,70,120,45,25,55,264,4
+デスアーチャー,93,65,52,37,60,268,1
+オークプリスト,80,53,43,56,63,272,2
+ブラッドクロウ,90,85,41,30,68,276,3
+ボルカノビースト,60,81,40,18,71,280,1
+ヘルバイト,110,140,90,33,79,300,3
+スタッグデモン,75,75,55,24,66,320,1
+ブリーズビースト,140,85,54,23,80,324,3
+アクスアーム,120,75,50,32,60,328,3
+カオスナイト,70,92,150,35,65,332,1
+コングウォリア,95,85,58,40,68,140,3
+タラスク,120,68,60,67,100,352,1
+ダハーカ,200,97,15,36,69,252,3
+ランズー,140,139,80,70,90,460,1
+ジズ,130,220,150,75,97,464,4
+トロル,250,155,32,42,94,376,3
+ヒルトロル,250,150,78,67,100,480,1
+ギガアスラ,350,200,90,35,125,456,3
+はめつりゅう,300,170,45,43,100,468,1
+デビルランズー,160,230,95,125,60,472,4
+アスラエッジ,170,158,72,99,126,476,2
+トロルデーモン,320,180,60,120,130,534,1`.split('\n').map(l=>{const a=l.split(',');return{n:a[0],hp:+a[1],hpMax:+a[1],op:+a[2],dp:+a[3],sp:+a[4],hl:+a[5],ar:+a[6],mv:+a[7]}});
+const C8=[80,160,320,640,1120,1760,3200,4800,6000,7200];
+const T={hp:[[45,120,211,309,383,426,464,514,528,538],[100,200,400,800,1400,2200,4400,6000,7500,9000]],
+st:[[10,25,50,80,160,250,350,460,580,710],[100,200,400,800,1400,2200,4000,6000,7500,9000]],
+ar:[[240,450,800,1500,3000,5000,7000,8000,9500,9999],[100,200,400,800,1500,3000,5000,7000,8000,9500]],
+op:[[28,52,77,106,125,133,150,165,181,188],C8],dp:[[14,23,33,47,65,74,84,94,103,114],C8],
+sp:[[17,28,40,56,78,89,101,113,124,137],C8],hl:[[20,50,70,100,120,130,140,160,180,200],C8]};
+const MV={1:[0,0,0,0,1,2],2:[0,0,1,1,1,1],3:[0,0,0,0,0,0],4:[0,0,2,2,2,2]};
+const defaults=()=>({name:'',hp:11,hpMax:11,st:5,stMax:5,ar:0,arMax:100,op:14,dp:9,sp:5,hl:6,tf:0,L:{hp:0,op:0,dp:0,sp:0,hl:0,st:0,ar:0},door:0,star:0,started:false,tS:Date.now(),tH:Date.now()});
+let S=null,B={},tm,ct;
+function load(){try{const j=localStorage.getItem(KEY);return j?Object.assign(defaults(),JSON.parse(j)):null}catch(e){return null}}
+function save(){try{if(S)localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const stamp=()=>{S.tS=S.tH=Date.now()};
+function regen(){const n=Date.now();let d=T0((n-S.tS)/4000);if(d>0){S.st=Math.min(S.stMax,S.st+d);S.tS+=d*4000}if(S.st>=S.stMax)S.tS=n;
+d=T0((n-S.tH)/2000);if(d>0){S.hp=Math.min(S.hpMax,S.hp+d);S.tH+=d*2000}if(S.hp>=S.hpMax)S.tH=n}
+const pcLabel=()=>`${S.name}\nHP:${S.hp}/${S.hpMax} ST:${S.st}/${S.stMax} AR:${S.ar}/${S.arMax}\nOP:${S.op} DP:${S.dp} SP:${S.sp} HL:${S.hl} TF:${S.tf}${S.star?' ★':''}`;
+
+function show(o){
+  clearInterval(tm);clearInterval(ct);save();
+  const t=o.top||'none',b=t=='battle';
+  $('#app').innerHTML=(b?'<div class="st" id="es" style="top:20px"></div>':'')+(t!='none'?`<div class="st" id="ps" style="top:${b?100:20}px"></div>`:'')+
+   (o.center?'':`<div class="box" id="mb" style="top:${b?180:t=='pc'?100:20}px"><div id="m"></div></div>`)+(o.center?'<div id="cb"></div>':'<div id="tb"></div>');
+  if(b){const e=B.e;$('#es').textContent=e&&(e.hp>0||o.showE)?`${e.n}\nHP:${e.hp}/${e.hpMax} AR:${e.ar}\nOP:${e.op} DP:${e.dp} SP:${e.sp} HL:${e.hl}`:'';if(o.sh=='e')$('#es').classList.add('sh')}
+  if(t!='none'){$('#ps').textContent=pcLabel();if(o.sh=='p')$('#ps').classList.add('sh')}
+  if(o.input){$('#mb').insertAdjacentHTML('beforeend','<div><input id="nm" maxlength="6"></div><div id="er"></div>')}
+  const bar=$(o.center?'#cb':'#tb');
+  (o.btns||[]).forEach(([l,f])=>{const x=document.createElement('button');x.textContent=l;x.disabled=!o.instant&&!o.center;x.onclick=f;bar.appendChild(x)});
+  if(o.center)return;
+  const m=o.text||'',el=$('#m');let i=0;
+  const fin=()=>{clearInterval(tm);el.textContent=m;document.querySelectorAll('#tb button').forEach(x=>x.disabled=false)};
+  if(o.instant||!m)fin();else{tm=setInterval(()=>{el.textContent=m.slice(0,++i);if(i>=m.length)fin()},20);$('#mb').onclick=fin}
+  if(o.camp)ct=setInterval(()=>{regen();$('#ps').textContent=pcLabel()},1000);
+}
+const msg=(text,next,top='pc',x={})=>show(Object.assign({top,text,btns:[['▼',next]]},x));
+
+/* ---- タイトル・導入 ---- */
+function title(){S=load();
+  show({center:1,btns:[['ゲームを始める',()=>S&&S.started?camp():intro()],['はじめから',()=>{
+    if(S&&S.started)show({top:'none',text:'セーブデータが消えます。\nよろしいですか？\n\n1. はい\n2. いいえ',btns:[['1',intro],['2',title]]});else intro()}]]})}
+function intro(){S=defaults();
+  show({top:'none',text:'主人公の名前を\n6文字以内で入力してください',instant:1,input:1,btns:[['OK',()=>{
+    const v=$('#nm').value.trim();if(!v){$('#er').textContent='名前が入力されていません';return}S.name=v;story1()}]]})}
+const story1=()=>msg('魔獣がいた時代。\n最果ての地と呼ばれる荒野に洞窟があった。\nそれほど深くないその洞窟の奥には扉がある。\n扉は乾いた粘土のようなものでできていて、縁取りには古代文字らしきものが装飾のように彫り込まれている。\nここを訪れた冒険者達はこの扉を開けるため、あらゆる方法をためしてきたが、誰にも開けることはできなかった。\nしかし魔獣と戦い勝ったことのある戦士にだけは扉から不思議な声が聞こえてくるのだという。▼',story2,'none');
+const story2=()=>msg(`扉は言い伝えによると古代文明が遺したもののようだ。\nかつて無から魔獣を生み出し、大陸の形を変えるほどの戦争をおこして滅んだ謎の文明。\n扉を開けた先にあるものは想像を超えた財宝か、世界を支配する暗黒の法か。\n${S.name}は扉の向こうにあるものが何か知るため、そしてそれを手に入れるため、この地にやってきたのであった。▼`,()=>{S.started=true;stamp();camp()},'none');
+
+/* ---- キャンプ ---- */
+function camp(){
+  regen();
+  if(S.door==1)return show({top:'pc',text:`階段を降りた${S.name}は見た事もない草原に立っていた。周りを見渡すと降りてきたはずの階段はどこにもなかった。\n空気はとてつもなく澄んで濃かった。${S.name}は歩き出した。頭の中に直接語りかけてくる声に導かれ──\n\n※ここまでプレイしてくださり、ありがとうございました！`,btns:[['END',()=>{S.door=0;title()}]]});
+  const c=25+25*S.L.st+Math.pow(2,S.L.st)*2;
+  show({top:'pc',camp:1,text:`${S.name}はキャンプにいる。\nどうする？\n\n1. 強化する\n2. フィールドにいく\n3. 回復する: ${c}AR`,
+   btns:[['1',trainTop],['2',()=>{stamp();B={ar:0,e:null,door:0};field()}],['3',()=>{
+     let m;if(S.ar>=c){S.hp=S.hpMax;S.st=S.stMax;S.ar-=c;m='HPとSTが回復した！'}else m='ARが足りない！▼';msg(m,camp)}]]});
+}
+const toCamp=()=>{stamp();camp()};
+
+/* ---- トレーニング ---- */
+const lv=k=>S.L[k]<10?S.L[k]+1:0,cost=k=>S.L[k]<10?T[k][1][S.L[k]]:0;
+const trainTop=()=>show({top:'pc',text:`${S.name}はトレーニング場にいる。\nどうする？\n\n1. 身体を強化する\n2. 能力を強化する\n3. キャンプにもどる`,btns:[['1',body],['2',abil],['3',toCamp]]});
+const row=(n,k,l)=>`${n}. ${l}: Lv.${lv(k)}: ${cost(k)}AR`;
+const body=()=>show({top:'pc',instant:1,text:`身体強化\n\n${row(1,'hp','HP(耐久値)')}\n${row(2,'st','ST(行動値)')}\n${row(3,'ar','AR(オーラ)')}\n4. やめる`,
+  btns:[['1',()=>up('hp','HP',body)],['2',()=>up('st','ST',body)],['3',()=>up('ar','AR',body)],['4',trainTop]]});
+const abil=()=>show({top:'pc',instant:1,text:`能力強化\n\n${row(1,'op','OP(攻撃力)')}\n${row(2,'dp','DP(防御力)')}\n${row(3,'sp','SP(素早さ)')}\n${row(4,'hl','HL(回復力)')}\n5. やめる`,
+  btns:[['1',()=>up('op','OP',abil)],['2',()=>up('dp','DP',abil)],['3',()=>up('sp','SP',abil)],['4',()=>up('hl','HL',abil)],['5',trainTop]]});
+function up(k,lab,back){let m;const L=S.L[k];
+  if(L>=10)m='これ以上強化できない！';
+  else{const c=T[k][1][L],a=T[k][0][L];
+    if(S.ar>=c){if(k=='hp'){S.hpMax=a;S.hp=a}else if(k=='st'){S.stMax=a;S.st=a}else if(k=='ar')S.arMax=a;else S[k]=a;S.ar-=c;S.L[k]++;m=`最大${lab}が${a}になった!`}
+    else m='ARが足りない！▼'}
+  msg(m,back)}
+
+/* ---- フィールド・戦闘 ---- */
+const field=()=>{B.e=null;B.door=0;show({top:'battle',text:`${S.name}はフィールドにいる。\nどうする？\n\n1. 洞窟へ扉を開けにいく\n2. 魔獣を探す\n3. キャンプにもどる`,btns:[['1',doorOpen],['2',remake],['3',toCamp]]})};
+function remake(){const c=Math.max(S.L.st,1);
+  if(S.st>=c){S.st-=c;const n=r(3)+T0(S.tf/10);B.e=Object.assign({},E[n>=E.length?r(E.length):n]);B.door=0;found()}
+  else{B.e=null;msg('スタミナが足りない▼',field,'battle')}}
+const found=()=>{stamp();show({top:'battle',text:`${S.name}は\n${B.e.n}をみつけた！\nどうする？\n\n1. 他の魔獣を捜す\n2. 戦闘開始\n3. キャンプに戻る`,btns:[['1',remake],['2',cmd],['3',toCamp]]})};
+function doorOpen(){
+  if(S.tf>450)msg(`洞窟についた。\n扉は${S.name}がかるく触れただけで何の抵抗もなく開いた。\nそのむこうは大広間のようになっている。\n中に入ると一度も見た事のない巨大な人型の魔獣がいた。\n${S.name}が近づくと魔獣は動き始めた！▼`,boss,'battle');
+  else{B.e=null;msg(`扉がテレパシーで語りかけてきた\n「この先に進むにはTFがあと${450-S.tf}足りない！」▼`,toCamp,'battle')}}
+const boss=()=>{B.e={n:'扉の番人',hp:800,hpMax:800,op:220,dp:100,sp:90,hl:80,ar:0,mv:1};B.door=1;
+  show({top:'battle',text:'扉の番人があらわれた！\nどうする？\n\n1. キャンプに戻る\n2. 戦闘開始\n3. フィールドに戻る',btns:[['1',toCamp],['2',cmd],['3',field]]})};
+const cmd=()=>{stamp();show({top:'battle',text:`${B.e.n}との戦闘\nどうする？\n\n1. 回復\n2. 攻撃\n3. 戦闘終了`,btns:[['1',heal],['2',attack],['3',endCheck]]})};
+const endCheck=()=>show({top:'battle',text:'戦闘を終了するとTFが6失われる\n\n1. はい\n2. いいえ',btns:[['1',()=>{S.tf=Math.max(0,S.tf-6);toCamp()}],['2',cmd]]});
+const lack=()=>msg('スタミナが足りない▼',cmd,'battle');
+function attack(){const c=Math.max(S.L.op,1);if(S.st<c)return lack();S.st-=c;fight(pcAtk)}
+function heal(){const c=Math.max(S.L.hl*2,1);if(S.st<c)return lack();S.st-=c;fight(pcHeal)}
+function fight(pa){const e=B.e;
+  const ea=()=>{const a=MV[e.mv][r(6)];return a==0?enmAtk():a==1?enmCur():enmRun()};
+  B.q=S.sp>=e.sp?[pa,ea]:[ea,pa];play(0)}
+function play(i){const a=B.q[i]();showMsg(a,0,i)}
+function showMsg(a,k,i){
+  let x={};if(k==1&&a.ap){a.ap();x.sh=a.sh;x.showE=1}if(k>=1&&a.kill)x.showE=1;
+  msg(a.m[k],()=>{if(k+1<a.m.length)return showMsg(a,k+1,i);
+    if(B.e.hp<=0||S.hp<=0)return endFight();if(i==0)return play(1);cmd()},'battle',x)}
+function endFight(){
+  if(B.door==1&&B.e.hp<=0){S.door=1;S.star=1;msg(`扉の番人が目の前で崩れ去ると床にはいつの間にか階段が現れていた。\n${S.name}はその階段を降りていった。▼`,toCamp,'battle')}
+  else{if(S.hp<=0)S.hp=1;msg(`戦闘終了\n${S.name}はキャンプに帰還した▼`,toCamp,'battle')}}
+const rr=()=>[7+r(3),1-r(3)];
+function pcAtk(){const e=B.e;let[p,d0]=rr();
+  let g=T0((S.sp-T0(e.sp/4))*p/8)+d0;if(g<=0)g=1;if(g>e.ar)g=e.ar;
+  [p,d0]=rr();let d=T0((T0(S.op/2)-T0(e.dp/4))*p/8)+d0;if(d<=0)d=1;
+  const kill=e.hp-d<=0,tot=(B.ar||0)+g;
+  const m=[`${S.name}の攻撃！▼`,`${e.n}に${d}のダメージ${kill?'！':'をあたえた！'}\n${g}のARを奪い取った！▼`];
+  if(kill)m.push(`${e.n}を倒した！▼`,`${tot}のARを得た！\nTFを4得た！▼`);
+  return{m,kill,sh:'e',ap(){B.ar=tot;e.ar-=g;S.ar=Math.min(S.arMax,S.ar+g);e.hp=Math.max(0,e.hp-d);if(kill)S.tf=Math.min(999,S.tf+4)}}}
+function pcHeal(){const[p,d0]=rr();const h=T0((S.hl/1.2)*p/8+d0);
+  return{m:[`${S.name}は回復を試みた！▼`,`${S.name}のHPが${h}回復した！▼`],ap(){S.hp=Math.min(S.hpMax,S.hp+h)}}}
+function enmAtk(){const e=B.e;const[p,d0]=rr();let d=T0((T0(e.op/2)-T0(S.dp/4))*p/8)+d0;if(d<=0)d=1;
+  const kill=S.hp-d<=0,tl=Math.min(6,S.tf),al=S.ar-T0(S.ar/2);
+  const m=[`${e.n}の攻撃！▼`,`${S.name}は${d}のダメージをうけた！▼`];
+  if(kill)m.push(`${S.name}は力つきた──\nTFを${tl}失った\nARを${al}失った▼`);
+  return{m,sh:'p',ap(){S.hp=Math.max(0,S.hp-d);if(kill){S.tf-=tl;B.door=0;S.ar-=al}}}}
+function enmCur(){const e=B.e;const[p,d0]=rr();const c=T0((e.hl/1.5)*p/8+d0);
+  return{m:[`${e.n}は回復をはじめた！▼`,`${e.n}のHPは${c}回復した！▼`],ap(){e.hp=Math.min(e.hpMax,e.hp+c)}}}
+const enmRun=()=>({m:[`${B.e.n}はこちらの様子をみている▼`]});
+
+title();
+</script></body></html>
