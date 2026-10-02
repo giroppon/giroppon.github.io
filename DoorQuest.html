@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Door Quest</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
@@ -12,10 +12,10 @@ html,body{margin:0;height:100%;background:#111;color:#fff;font-family:-apple-sys
 .box{bottom:60px;padding:10px;line-height:1.5;overflow:auto}
 .sh{animation:sh .06s 3 alternate}@keyframes sh{to{transform:translateY(5px)}}
 #tb{position:absolute;left:0;right:0;bottom:0;height:44px;background:#1f1f1f;display:flex;justify-content:space-around;align-items:center}
-button{background:none;border:0;color:#fff;font-size:17px;padding:8px 18px}button:disabled{opacity:.3}
+button{background:none;border:0;color:#fff;font-size:17px;padding:8px 18px;touch-action:manipulation}button:disabled{opacity:.3}
 #cb{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:16px}
 #cb button{width:200px;height:44px;border:2px solid #fff;border-radius:4px;font-weight:bold;font-size:14px}
-input{background:#000;color:#fff;border:2px solid #fff;border-radius:4px;padding:5px;font-size:14px;width:140px;margin-top:12px}
+input{background:#000;color:#fff;border:2px solid #fff;border-radius:4px;padding:5px;font-size:16px;width:140px;margin-top:12px}
 #er{color:#fff;margin-top:8px}
 </style></head><body><div id="app"></div>
 <script>
