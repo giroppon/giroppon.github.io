@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>スレッドメモ</title>
 <style>
 :root{--bg:#efefef;--panel:#fff;--text:#222;--sub:#777;--link:#0645ad;--line:#ccc;--accent:#b30000;--pop:#fffbe0;color-scheme:light;
@@ -10,13 +10,13 @@ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:en
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1a1a;--panel:#242424;--text:#e4e4e4;--sub:#999;--link:#7db3ff;--line:#444;--accent:#ff7b7b;--pop:#3a3720;color-scheme:dark}}
 :root[data-theme="dark"]{--bg:#1a1a1a;--panel:#242424;--text:#e4e4e4;--sub:#999;--link:#7db3ff;--line:#444;--accent:#ff7b7b;--pop:#3a3720;color-scheme:dark}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+body{margin:0;overflow-x:hidden;-webkit-text-size-adjust:100%;touch-action:manipulation;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
 main{max-width:760px;margin:0 auto;padding:12px}
 h1{font-size:18px;margin:4px 0 12px}
 h2{font-size:17px;margin:4px 0;color:var(--accent)}
 a{color:var(--link);cursor:pointer;text-decoration:none}
 .box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;margin-bottom:12px}
-input,textarea{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--text);font:inherit;margin:3px 0}
+input,textarea{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--text);font:inherit;font-size:16px;margin:3px 0}
 textarea{min-height:90px;resize:vertical}
 button{padding:7px 14px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--text);font:inherit;cursor:pointer}
 button.main{background:var(--link);color:#fff;border-color:var(--link)}
