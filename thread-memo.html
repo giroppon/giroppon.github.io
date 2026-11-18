@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>スレッドメモ</title>
+<style>
+:root{--bg:#efefef;--panel:#fff;--text:#222;--sub:#777;--link:#0645ad;--line:#ccc;--accent:#b30000;--pop:#fffbe0;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1a1a;--panel:#242424;--text:#e4e4e4;--sub:#999;--link:#7db3ff;--line:#444;--accent:#ff7b7b;--pop:#3a3720;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1a1a;--panel:#242424;--text:#e4e4e4;--sub:#999;--link:#7db3ff;--line:#444;--accent:#ff7b7b;--pop:#3a3720;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+main{max-width:760px;margin:0 auto;padding:12px}
+h1{font-size:18px;margin:4px 0 12px}
+h2{font-size:17px;margin:4px 0;color:var(--accent)}
+a{color:var(--link);cursor:pointer;text-decoration:none}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;margin-bottom:12px}
+input,textarea{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--text);font:inherit;margin:3px 0}
+textarea{min-height:90px;resize:vertical}
+button{padding:7px 14px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--text);font:inherit;cursor:pointer}
+button.main{background:var(--link);color:#fff;border-color:var(--link)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.th{display:flex;justify-content:space-between;gap:8px;padding:8px 2px;border-bottom:1px dotted var(--line)}
+.th small{color:var(--sub);white-space:nowrap}
+.post{padding:8px 2px;border-bottom:1px dotted var(--line)}
+.post.hl{background:var(--pop)}
+.meta{font-size:13px;color:var(--sub)}
+.meta b{color:var(--text)}
+.body{white-space:pre-wrap;word-break:break-word;margin:4px 0 0 8px}
+.pop{position:absolute;z-index:5;max-width:min(520px,92vw);background:var(--pop);border:1px solid var(--line);border-radius:4px;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.hint{color:var(--sub);font-size:13px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.top h1,.top h2{margin:4px 0}
+.top button{white-space:nowrap;padding:5px 10px;font-size:13px}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+var KEY="bbs-data-v1";
+var S={threads:[],next:1,name:""};
+function load(){try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&Array.isArray(d.threads))S=d}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){alert("保存に失敗しました(容量不足など)")}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function fmt(t){var d=new Date(t),p=function(n){return String(n).padStart(2,"0")};
+return d.getFullYear()+"/"+p(d.getMonth()+1)+"/"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds())}
+function body(s){return esc(s).replace(/&gt;&gt;(\d+)/g,'<a class="anc" data-n="$1">&gt;&gt;$1</a>')}
+function thread(id){return S.threads.find(function(t){return t.id===id})}
+function route(){var m=location.hash.match(/^#t-(\d+)$/);return m?+m[1]:0}
+
+function render(){
+  closePop();
+  var id=route(),t=id&&thread(id),h="";
+  if(!t){
+    var list=S.threads.slice().sort(function(a,b){return b.updated-a.updated});
+    h+='<div class="top"><h1>スレッド一覧</h1><button id="tg"></button></div><div class="box">'+
+      (list.length?list.map(function(x){return'<div class="th"><a href="#t-'+x.id+'">'+x.id+": "+esc(x.title)+" ("+x.posts.length+')</a><small>'+fmt(x.updated).slice(5,16)+'</small></div>'}).join(""):'<div class="hint">まだスレッドがありません。下から立ててください。</div>')+
+      '</div><div class="box"><b>新規スレッド</b><input id="ttl" placeholder="スレッドタイトル" maxlength="100">'+
+      '<textarea id="bd" placeholder="最初の書き込み"></textarea>'+
+      '<button class="main" id="mk">スレッドを立てる</button></div>'+
+      '<details class="box"><summary>データの書き出し・読み込み</summary><p class="hint">書き出しで表示されたテキストをコピーして保存してください。読み込みは、貼り付けて実行すると現在のデータを置き換えます。</p>'+
+      '<textarea id="io"></textarea><div class="row"><button id="ex">書き出し</button><button id="im">読み込み(置換)</button></div></details>';
+  }else{
+    h+='<div class="top"><a href="#list">← 一覧へ</a><button id="tg"></button></div><div class="top"><h2>'+esc(t.title)+'</h2><button id="dl">スレッド削除</button></div><div class="box">'+
+      t.posts.map(function(p){return'<div class="post" id="p'+p.n+'"><div class="meta"><a class="num" data-n="'+p.n+'">'+p.n+'</a>: '+fmt(p.time)+'</div><div class="body">'+body(p.body)+'</div></div>'}).join("")+'</div>'+
+      '<div class="box"><b>書き込む</b><textarea id="bd" placeholder="本文(>>番号 で返信。Ctrl/Cmd+Enterで投稿)"></textarea>'+
+      '<div class="row"><button class="main" id="pt">書き込む</button></div></div>';
+  }
+  $app.innerHTML=h;bind(t);
+}
+var $app=document.getElementById("app"),armed=false;
+function q(i){return document.getElementById(i)}
+function bind(t){
+  q("tg").onclick=toggleTheme;setTgLabel();
+  if(!t){
+    q("mk").onclick=function(){
+      var ti=q("ttl").value.trim(),b=q("bd").value.trim();
+      if(!ti||!b){alert("タイトルと本文を入力してください");return}
+      var now=Date.now(),id=S.next++;
+      S.threads.push({id:id,title:ti,updated:now,posts:[{n:1,body:b,time:now}]});
+      save();location.hash="#t-"+id};
+    q("ex").onclick=function(){q("io").value=JSON.stringify(S)};
+    q("im").onclick=function(){try{var d=JSON.parse(q("io").value);if(!d||!Array.isArray(d.threads))throw 0;S=d;save();render()}catch(e){alert("読み込めませんでした。形式を確認してください")}};
+    
+  }else{
+    var post=function(){
+      var b=q("bd").value.trim();if(!b)return;
+      var now=Date.now();
+      t.posts.push({n:t.posts.length+1,body:b,time:now});t.updated=now;
+      save();render();window.scrollTo(0,document.body.scrollHeight)};
+    q("pt").onclick=post;
+    q("bd").onkeydown=function(e){if((e.ctrlKey||e.metaKey)&&e.key==="Enter")post()};
+    q("dl").onclick=function(){
+      if(!armed){armed=true;this.textContent="もう一度押すと削除";return}
+      S.threads=S.threads.filter(function(x){return x.id!==t.id});armed=false;save();location.hash="#list"};
+    Array.prototype.forEach.call(document.querySelectorAll(".num"),function(a){
+      a.onclick=function(){var ta=q("bd");ta.value+=(ta.value&&!/\n$/.test(ta.value)?"\n":"")+">>"+a.dataset.n+"\n";ta.focus()}});
+  }
+}
+var TK="bbs-theme";
+(function(){try{var m=localStorage.getItem(TK);if(m)document.documentElement.setAttribute("data-theme",m)}catch(e){}})();
+function curTheme(){var a=document.documentElement.getAttribute("data-theme");if(a)return a;return matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}
+function setTgLabel(){var b=document.getElementById("tg");if(b)b.textContent=curTheme()==="dark"?"☀ 白に切替":"● 黒に切替"}
+function toggleTheme(){var m=curTheme()==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",m);try{localStorage.setItem(TK,m)}catch(e){}setTgLabel()}
+var pop=null;
+function closePop(){if(pop){pop.remove();pop=null}}
+document.addEventListener("click",function(e){
+  var a=e.target.closest&&e.target.closest(".anc");
+  if(!a){closePop();return}
+  var t=thread(route());if(!t)return;
+  var p=t.posts[+a.dataset.n-1];closePop();
+  var r=a.getBoundingClientRect();
+  pop=document.createElement("div");pop.className="pop";
+  pop.innerHTML=p?'<div class="meta">'+p.n+": "+fmt(p.time)+'</div><div class="body" style="margin-left:0">'+body(p.body)+"</div>":'<div class="hint">その番号の書き込みはありません</div>';
+  document.body.appendChild(pop);
+  pop.style.left=Math.max(6,Math.min(r.left+scrollX,scrollX+innerWidth-pop.offsetWidth-6))+"px";
+  pop.style.top=(r.bottom+scrollY+4)+"px";
+  e.stopPropagation();
+});
+window.addEventListener("hashchange",function(){armed=false;render();window.scrollTo(0,0)});
+load();render();
+</script>
+</body>
+</html>
