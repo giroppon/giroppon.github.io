@@ -2,16 +2,17 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="暗号メモ">
-<title>暗号化エディタ</title>
+<meta name="apple-mobile-web-app-title" content="passEdit">
+<title>passEdit</title>
 <style>
 :root{--bg:#f6f6f4;--surface:#fff;--text:#1c1c1a;--muted:#6b6b66;--line:#d8d8d2;--accent:#1d5fd1;--accent-t:#fff;--danger:#c0392b;--ok:#1e7a46;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141413;--surface:#1f1f1d;--text:#ececE8;--muted:#9a9a93;--line:#34342f;--accent:#6aa0ff;--accent-t:#0b1a33;--danger:#ff7b6b;--ok:#5fd394;color-scheme:dark}}
 :root[data-theme="dark"]{--bg:#141413;--surface:#1f1f1d;--text:#ececE8;--muted:#9a9a93;--line:#34342f;--accent:#6aa0ff;--accent-t:#0b1a33;--danger:#ff7b6b;--ok:#5fd394;color-scheme:dark}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;touch-action:manipulation;background:var(--bg)}
+html.ed,html.ed body{overflow:hidden;height:100%;overscroll-behavior:none}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;min-height:100vh}
 main{max-width:760px;margin:0 auto;padding:20px 16px 40px}
@@ -20,28 +21,44 @@ p.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
 label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
 input,textarea{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
-textarea{resize:vertical;min-height:50vh;font-family:ui-monospace,Menlo,Consolas,"Hiragino Sans",monospace;line-height:1.5}
-textarea.small{min-height:110px;font-size:13px;word-break:break-all}
-button{font:inherit;font-size:15px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:9px 14px;cursor:pointer}
+textarea.small{min-height:130px;font-size:16px;word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace;line-height:1.4}
+button{font:inherit;font-size:16px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:9px 14px;cursor:pointer}
 button.primary{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
-button.danger{color:var(--danger)}
 button.link{border:none;background:none;color:var(--accent);padding:6px 0;text-decoration:underline}
+button.danger{color:var(--danger)}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
-.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
-.spacer{flex:1}
 #msg{min-height:22px;font-size:14px;margin:8px 0}
 #msg.err{color:var(--danger)}#msg.ok{color:var(--ok)}
-.dirty{font-size:13px;color:var(--danger)}
 [hidden]{display:none!important}
+
+/* エディタ(全画面) */
+#v-editor{position:fixed;left:0;right:0;top:var(--vt,0px);height:var(--vh,100dvh);display:flex;flex-direction:column;background:var(--bg);z-index:5}
+#bar{flex:none;display:flex;align-items:center;gap:6px;background:var(--surface);border-bottom:1px solid var(--line);
+padding:calc(env(safe-area-inset-top,0px) + 5px) calc(env(safe-area-inset-right,0px) + 8px) 5px calc(env(safe-area-inset-left,0px) + 8px)}
+#q{flex:1;min-width:0;height:34px;padding:4px 10px}
+#cnt{flex:none;font-size:12px;color:var(--muted);min-width:34px;text-align:center}
+#bar button{flex:none;height:34px;min-width:34px;padding:0 8px;line-height:1}
+#dot{flex:none;color:var(--danger);font-size:14px}
+#ed{flex:1;min-height:0;width:100%;border:0;border-radius:0;resize:none;outline:none;background:var(--bg);
+font-family:ui-monospace,Menlo,Consolas,"Hiragino Sans",monospace;line-height:1.55;
+padding:12px calc(env(safe-area-inset-right,0px) + 14px) calc(env(safe-area-inset-bottom,0px) + 14px) calc(env(safe-area-inset-left,0px) + 14px)}
+#menu-bd{position:fixed;inset:0;z-index:19}
+#menu{position:fixed;z-index:20;top:calc(env(safe-area-inset-top,0px) + var(--vt,0px) + 46px);right:calc(env(safe-area-inset-right,0px) + 8px);min-width:210px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.mi{display:block;width:100%;text-align:left;border:0;background:none;padding:12px 14px;border-radius:8px}
+.mi:active{background:var(--bg)}
+#exp{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px}
+#exp .card{width:100%;max-width:560px;margin:0}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 20px);z-index:40;background:var(--text);color:var(--bg);padding:8px 14px;border-radius:18px;font-size:14px;max-width:90%;pointer-events:none}
+#toast.err{background:var(--danger);color:#fff}
+#mirror{position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;word-wrap:break-word}
 </style>
 </head>
 <body>
-<main>
-<h1>🔐 暗号化エディタ</h1>
+<main id="main">
+<h1>🔐 passEdit</h1>
 <p class="sub">データはこの端末のブラウザ内だけで暗号化・復号されます。外部には送信されません。</p>
 <div id="msg"></div>
 
-<!-- 初期設定 -->
 <section id="v-setup" class="card" hidden>
 <strong>はじめに:マスターパスワードを設定</strong>
 <label for="s-pw">マスターパスワード(8文字以上)</label>
@@ -53,7 +70,6 @@ button.link{border:none;background:none;color:var(--accent);padding:6px 0;text-d
 <button class="link" data-go="restore">暗号文から復元する</button>
 </section>
 
-<!-- ロック画面 -->
 <section id="v-lock" class="card" hidden>
 <strong>ロック中</strong>
 <label for="l-pw">マスターパスワード</label>
@@ -65,7 +81,6 @@ button.link{border:none;background:none;color:var(--accent);padding:6px 0;text-d
 </div>
 </section>
 
-<!-- 復元 -->
 <section id="v-restore" class="card" hidden>
 <strong>暗号文から復元</strong>
 <label for="r-str">暗号文(PWE1. から始まる文字列)を貼り付け</label>
@@ -78,39 +93,51 @@ button.link{border:none;background:none;color:var(--accent);padding:6px 0;text-d
 </div>
 <p class="sub" style="margin-top:12px">復元すると、この端末の現在の内容は置き換わります。</p>
 </section>
+</main>
 
 <!-- エディタ -->
 <section id="v-editor" hidden>
-<div class="bar">
-<button class="primary" id="b-save">保存</button>
-<button id="b-export">暗号文を出力</button>
-<button id="b-import">暗号文から復元</button>
-<span class="spacer"></span>
-<span id="dirty" class="dirty" hidden>未保存</span>
-<button id="b-lock">ロック</button>
+<div id="bar">
+<input id="q" type="search" placeholder="検索" enterkeyhint="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+<span id="cnt"></span>
+<button id="b-prev" aria-label="前へ">▲</button>
+<button id="b-next" aria-label="次へ">▼</button>
+<span id="dot" hidden title="未保存">●</span>
+<button id="b-menu" aria-label="メニュー">≡</button>
 </div>
-<textarea id="ed" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="ここに自由に書き込めます。「保存」で暗号化されて端末に保存されます。"></textarea>
-<div id="exp" class="card" style="margin-top:14px" hidden>
+<textarea id="ed" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="ここに自由に書き込めます。≡メニューの「保存」で暗号化して保存されます。"></textarea>
+</section>
+
+<div id="menu-bd" hidden></div>
+<div id="menu" hidden>
+<button class="mi" id="m-save">💾 保存</button>
+<button class="mi" id="m-export">📤 暗号文を出力</button>
+<button class="mi" id="m-import">📥 暗号文から復元</button>
+<button class="mi" id="m-lock">🔒 ロック</button>
+</div>
+
+<div id="exp" hidden>
+<div class="card">
 <strong>暗号文(バックアップ用)</strong>
-<p class="sub">そのままコピーして、メールやメモに保存できます。復元にはこのアプリとマスターパスワードが必要です。</p>
+<p class="sub">そのままコピーして、メールやメモに保存できます。復元にはマスターパスワードが必要です。</p>
 <textarea id="exp-out" class="small" readonly></textarea>
 <div class="row"><button class="primary" id="b-copy">コピー</button><button id="b-exp-close">閉じる</button></div>
 </div>
-<p class="sub" style="margin-top:14px">5分操作がないと自動で保存してロックします。</p>
-</section>
-</main>
+</div>
+<div id="toast" hidden></div>
+<div id="mirror"></div>
 
 <script>
 (function(){
 "use strict";
 var KEY="secure-editor.vault.v1", PREFIX="PWE1.", ITER=600000, IDLE_MS=5*60*1000;
-var cryptoKey=null, salt=null, dirty=false, idleTimer=null;
+var cryptoKey=null, salt=null, dirty=false, idleTimer=null, toastTimer=null;
 var $=function(id){return document.getElementById(id)};
 var enc=new TextEncoder(), dec=new TextDecoder();
+var ed=$("ed");
 
 function toB64(u8){var s="";for(var i=0;i<u8.length;i+=0x8000){s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000))}return btoa(s)}
 function fromB64(b){var s=atob(b),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u}
-
 function store(v){try{localStorage.setItem(KEY,v);return true}catch(e){return false}}
 function load(){try{return localStorage.getItem(KEY)}catch(e){return null}}
 function wipeStore(){try{localStorage.removeItem(KEY)}catch(e){}}
@@ -137,12 +164,37 @@ async function decryptString(str,pw){
   return {text:dec.decode(pt),key:k,salt:s};
 }
 
-function msg(t,cls){var m=$("msg");m.textContent=t||"";m.className=cls||""}
+/* 表示まわり */
+function inEditor(){return !$("v-editor").hidden}
+function toast(t,cls){
+  var el=$("toast");if(!t)return;
+  el.textContent=t;el.className=cls||"";el.hidden=false;
+  clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.hidden=true},2200);
+}
+function msg(t,cls){
+  if(inEditor()){toast(t,cls);return}
+  var m=$("msg");m.textContent=t||"";m.className=cls||"";
+}
+function vv(){
+  var v=window.visualViewport,s=$("v-editor").style;
+  if(!v){return}
+  s.setProperty("--vt",v.offsetTop+"px");s.setProperty("--vh",v.height+"px");
+  document.documentElement.style.setProperty("--vt",v.offsetTop+"px");
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener("resize",vv);
+  window.visualViewport.addEventListener("scroll",vv);
+}
+function closeMenu(){$("menu").hidden=true;$("menu-bd").hidden=true}
 function show(name){
   ["setup","lock","restore","editor"].forEach(function(n){$("v-"+n).hidden=(n!==name)});
-  msg("");
+  $("main").hidden=(name==="editor");
+  document.documentElement.classList.toggle("ed",name==="editor");
+  closeMenu();$("exp").hidden=true;
+  $("msg").textContent="";$("msg").className="";
+  if(name==="editor"){vv();window.scrollTo(0,0)}
 }
-function setDirty(d){dirty=d;$("dirty").hidden=!d}
+function setDirty(d){dirty=d;$("dot").hidden=!d}
 function resetIdle(){
   clearTimeout(idleTimer);
   if(!cryptoKey) return;
@@ -150,21 +202,22 @@ function resetIdle(){
 }
 async function saveNow(){
   if(!cryptoKey) return false;
-  var s=await encryptText($("ed").value);
-  if(!store(s)){msg("保存に失敗しました(ブラウザの保存領域が使えません)。暗号文を出力して手動で控えてください。","err");return false}
+  var s=await encryptText(ed.value);
+  if(!store(s)){msg("保存に失敗しました(保存領域が使えません)。暗号文を出力して控えてください。","err");return false}
   setDirty(false);return true;
 }
 async function lockNow(autosave){
   if(cryptoKey&&autosave&&dirty){try{await saveNow()}catch(e){}}
   cryptoKey=null;salt=null;clearTimeout(idleTimer);
-  $("ed").value="";$("exp-out").value="";$("exp").hidden=true;$("l-pw").value="";setDirty(false);
+  ed.value="";$("exp-out").value="";$("l-pw").value="";$("q").value="";$("cnt").textContent="";cur=-1;setDirty(false);
   show(load()?"lock":"setup");
 }
 function openEditor(text){
-  $("ed").value=text;setDirty(false);$("exp").hidden=true;show("editor");resetIdle();
+  ed.value=text;ed.readOnly=false;setDirty(false);$("q").value="";$("cnt").textContent="";cur=-1;
+  show("editor");resetIdle();
 }
 
-// セットアップ
+/* セットアップ・解除・消去 */
 $("b-setup").onclick=async function(){
   var a=$("s-pw").value,b=$("s-pw2").value;
   if(a.length<8){msg("8文字以上にしてください。","err");return}
@@ -174,12 +227,10 @@ $("b-setup").onclick=async function(){
     cryptoKey=await derive(a,salt);
     var ok=store(await encryptText(""));
     $("s-pw").value="";$("s-pw2").value="";
-    if(!ok){msg("この環境では端末内への保存ができません。暗号文の出力で手動バックアップしてください。","err")}
     openEditor("");
+    if(!ok)msg("この環境では端末内への保存ができません。暗号文の出力で手動バックアップしてください。","err");
   }catch(e){msg("設定に失敗しました。","err")}
 };
-
-// 解除
 async function unlock(){
   var pw=$("l-pw").value,v=load();
   if(!pw||!v) return;
@@ -192,21 +243,18 @@ async function unlock(){
 }
 $("b-unlock").onclick=unlock;
 $("l-pw").addEventListener("keydown",function(e){if(e.key==="Enter")unlock()});
-
-// 消去
 $("b-wipe").onclick=function(){
   if(confirm("この端末に保存された暗号化データを完全に消去します。バックアップ(暗号文)がない場合、元に戻せません。よろしいですか?")){
     wipeStore();show("setup");
   }
 };
 
-// 復元
-var restoreFrom="lock";
-document.querySelectorAll("[data-go=restore]").forEach(function(b){
-  b.onclick=function(){restoreFrom=cryptoKey?"editor":(load()?"lock":"setup");show("restore")};
-});
-$("b-import").onclick=function(){restoreFrom="editor";show("restore")};
-$("b-restore-cancel").onclick=function(){show(cryptoKey?"editor":(load()?"lock":"setup"))};
+/* 復元 */
+function openRestore(){show("restore")}
+document.querySelectorAll("[data-go=restore]").forEach(function(b){b.onclick=openRestore});
+$("b-restore-cancel").onclick=function(){
+  if(cryptoKey){show("editor");resetIdle()}else{show(load()?"lock":"setup")}
+};
 $("b-restore").onclick=async function(){
   var str=$("r-str").value,pw=$("r-pw").value;
   if(!str.trim()||!pw){msg("暗号文とパスワードを入力してください。","err");return}
@@ -223,33 +271,95 @@ $("b-restore").onclick=async function(){
   }
 };
 
-// エディタ操作
-$("ed").addEventListener("input",function(){setDirty(true);resetIdle()});
-$("b-save").onclick=async function(){
-  try{if(await saveNow()){msg("暗号化して保存しました。","ok");resetIdle()}}catch(e){msg("保存に失敗しました。","err")}
+/* メニュー */
+$("b-menu").onclick=function(){
+  var open=$("menu").hidden;
+  $("menu").hidden=!open;$("menu-bd").hidden=!open;
 };
-$("b-export").onclick=async function(){
+$("menu-bd").onclick=closeMenu;
+async function doSave(){
+  try{if(await saveNow()){msg("暗号化して保存しました。","ok");resetIdle()}}catch(e){msg("保存に失敗しました。","err")}
+}
+$("m-save").onclick=function(){closeMenu();doSave()};
+$("m-export").onclick=async function(){
+  closeMenu();
   try{
-    var ok=await saveNow();
-    $("exp-out").value=load()||await encryptText($("ed").value);
-    $("exp").hidden=false;
-    if(ok)msg("保存し、暗号文を出力しました。","ok");
-    $("exp").scrollIntoView({behavior:"smooth",block:"nearest"});resetIdle();
+    await saveNow();
+    $("exp-out").value=load()||await encryptText(ed.value);
+    $("exp").hidden=false;resetIdle();
   }catch(e){msg("出力に失敗しました。","err")}
 };
+$("m-import").onclick=function(){closeMenu();openRestore()};
+$("m-lock").onclick=function(){closeMenu();lockNow(true)};
 $("b-exp-close").onclick=function(){$("exp").hidden=true;$("exp-out").value=""};
 $("b-copy").onclick=async function(){
-  var t=$("exp-out").value;
-  try{await navigator.clipboard.writeText(t);msg("コピーしました。","ok")}
-  catch(e){var o=$("exp-out");o.removeAttribute("readonly");o.focus();o.select();o.setSelectionRange(0,t.length);
+  var o=$("exp-out"),t=o.value;
+  try{await navigator.clipboard.writeText(t);toast("コピーしました")}
+  catch(e){
+    o.readOnly=false;o.focus();o.select();o.setSelectionRange(0,t.length);
     var ok=false;try{ok=document.execCommand("copy")}catch(_){}
-    o.setAttribute("readonly","");msg(ok?"コピーしました。":"自動コピーできませんでした。選択された文字列を手動でコピーしてください。",ok?"ok":"err")}
+    o.readOnly=true;toast(ok?"コピーしました":"選択された文字列を手動でコピーしてください",ok?"":"err");
+  }
 };
-$("b-lock").onclick=function(){lockNow(true)};
+document.addEventListener("keydown",function(e){
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"&&inEditor()){e.preventDefault();doSave()}
+});
+
+/* 検索 */
+var cur=-1, mirror=$("mirror");
+function escRe(s){return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}
+function yOf(pos){
+  var cs=getComputedStyle(ed),m=mirror;
+  ["fontFamily","fontSize","lineHeight","letterSpacing","paddingTop","paddingBottom","paddingLeft","paddingRight"].forEach(function(p){m.style[p]=cs[p]});
+  m.style.boxSizing="border-box";m.style.width=ed.clientWidth+"px";
+  m.textContent=ed.value.slice(0,pos);
+  var sp=document.createElement("span");sp.textContent="\u200b";m.appendChild(sp);
+  return sp.offsetTop;
+}
+function find(dir){
+  var q=$("q").value;
+  if(!q){$("cnt").textContent="";return}
+  var re=new RegExp(escRe(q),"gi"),text=ed.value,idx=[],m;
+  while((m=re.exec(text))!==null){idx.push(m.index);if(m[0].length===0)re.lastIndex++}
+  if(!idx.length){$("cnt").textContent="0";cur=-1;toast("見つかりません");return}
+  var n=-1,i;
+  if(cur<0){
+    var from=ed.selectionStart||0;
+    if(dir>0){for(i=0;i<idx.length;i++){if(idx[i]>=from){n=i;break}}if(n<0)n=0}
+    else{for(i=idx.length-1;i>=0;i--){if(idx[i]<from){n=i;break}}if(n<0)n=idx.length-1}
+  }else{
+    var p=idx.indexOf(cur);
+    if(p<0){for(i=0;i<idx.length;i++){if(idx[i]>cur){p=i-1;break}}if(p<0)p=idx.length-1}
+    n=(p+dir+idx.length)%idx.length;
+  }
+  cur=idx[n];
+  $("cnt").textContent=(n+1)+"/"+idx.length;
+  ed.readOnly=true;               // キーボードを出さずに選択表示する
+  ed.focus({preventScroll:true});
+  ed.setSelectionRange(cur,cur+q.length);
+  ed.scrollTop=Math.max(0,yOf(cur)-ed.clientHeight*0.3);
+  resetIdle();
+}
+function unro(){if(ed.readOnly)ed.readOnly=false}
+ed.addEventListener("pointerdown",unro);
+ed.addEventListener("touchstart",unro,{passive:true});
+ed.addEventListener("keydown",unro);
+$("q").addEventListener("input",function(){cur=-1;$("cnt").textContent=""});
+$("q").addEventListener("keydown",function(e){
+  if(e.key==="Enter"){e.preventDefault();find(e.shiftKey?-1:1)}
+});
+["b-prev","b-next"].forEach(function(id){
+  var b=$(id);
+  b.addEventListener("pointerdown",function(e){e.preventDefault()});
+  b.onclick=function(){find(id==="b-next"?1:-1)};
+});
+ed.addEventListener("input",function(){setDirty(true);cur=-1;resetIdle()});
+
+/* 共通 */
 ["pointerdown","keydown","touchstart"].forEach(function(ev){document.addEventListener(ev,resetIdle,{passive:true})});
+document.addEventListener("gesturestart",function(e){e.preventDefault()});
 window.addEventListener("beforeunload",function(e){if(dirty){e.preventDefault();e.returnValue=""}});
 
-// 起動
 if(!window.crypto||!crypto.subtle){
   msg("このブラウザ/接続では暗号機能(Web Crypto)が使えません。HTTPS で開いてください。","err");
 }else{
