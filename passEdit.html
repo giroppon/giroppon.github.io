@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="暗号メモ">
+<title>暗号化エディタ</title>
+<style>
+:root{--bg:#f6f6f4;--surface:#fff;--text:#1c1c1a;--muted:#6b6b66;--line:#d8d8d2;--accent:#1d5fd1;--accent-t:#fff;--danger:#c0392b;--ok:#1e7a46;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141413;--surface:#1f1f1d;--text:#ececE8;--muted:#9a9a93;--line:#34342f;--accent:#6aa0ff;--accent-t:#0b1a33;--danger:#ff7b6b;--ok:#5fd394;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141413;--surface:#1f1f1d;--text:#ececE8;--muted:#9a9a93;--line:#34342f;--accent:#6aa0ff;--accent-t:#0b1a33;--danger:#ff7b6b;--ok:#5fd394;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;min-height:100vh}
+main{max-width:760px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}
+p.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+input,textarea{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+textarea{resize:vertical;min-height:50vh;font-family:ui-monospace,Menlo,Consolas,"Hiragino Sans",monospace;line-height:1.5}
+textarea.small{min-height:110px;font-size:13px;word-break:break-all}
+button{font:inherit;font-size:15px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:9px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
+button.danger{color:var(--danger)}
+button.link{border:none;background:none;color:var(--accent);padding:6px 0;text-decoration:underline}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.spacer{flex:1}
+#msg{min-height:22px;font-size:14px;margin:8px 0}
+#msg.err{color:var(--danger)}#msg.ok{color:var(--ok)}
+.dirty{font-size:13px;color:var(--danger)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<h1>🔐 暗号化エディタ</h1>
+<p class="sub">データはこの端末のブラウザ内だけで暗号化・復号されます。外部には送信されません。</p>
+<div id="msg"></div>
+
+<!-- 初期設定 -->
+<section id="v-setup" class="card" hidden>
+<strong>はじめに:マスターパスワードを設定</strong>
+<label for="s-pw">マスターパスワード(8文字以上)</label>
+<input id="s-pw" type="password" autocomplete="new-password">
+<label for="s-pw2">もう一度入力</label>
+<input id="s-pw2" type="password" autocomplete="new-password">
+<div class="row"><button class="primary" id="b-setup">設定して開始</button></div>
+<p class="sub" style="margin-top:12px">⚠ パスワードを忘れると誰にも復元できません。</p>
+<button class="link" data-go="restore">暗号文から復元する</button>
+</section>
+
+<!-- ロック画面 -->
+<section id="v-lock" class="card" hidden>
+<strong>ロック中</strong>
+<label for="l-pw">マスターパスワード</label>
+<input id="l-pw" type="password" autocomplete="current-password">
+<div class="row"><button class="primary" id="b-unlock">解除</button></div>
+<div class="row" style="justify-content:space-between">
+<button class="link" data-go="restore">暗号文から復元する</button>
+<button class="link danger" id="b-wipe">この端末のデータを消去</button>
+</div>
+</section>
+
+<!-- 復元 -->
+<section id="v-restore" class="card" hidden>
+<strong>暗号文から復元</strong>
+<label for="r-str">暗号文(PWE1. から始まる文字列)を貼り付け</label>
+<textarea id="r-str" class="small" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+<label for="r-pw">その暗号文のマスターパスワード</label>
+<input id="r-pw" type="password" autocomplete="current-password">
+<div class="row">
+<button class="primary" id="b-restore">復元</button>
+<button id="b-restore-cancel">戻る</button>
+</div>
+<p class="sub" style="margin-top:12px">復元すると、この端末の現在の内容は置き換わります。</p>
+</section>
+
+<!-- エディタ -->
+<section id="v-editor" hidden>
+<div class="bar">
+<button class="primary" id="b-save">保存</button>
+<button id="b-export">暗号文を出力</button>
+<button id="b-import">暗号文から復元</button>
+<span class="spacer"></span>
+<span id="dirty" class="dirty" hidden>未保存</span>
+<button id="b-lock">ロック</button>
+</div>
+<textarea id="ed" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="ここに自由に書き込めます。「保存」で暗号化されて端末に保存されます。"></textarea>
+<div id="exp" class="card" style="margin-top:14px" hidden>
+<strong>暗号文(バックアップ用)</strong>
+<p class="sub">そのままコピーして、メールやメモに保存できます。復元にはこのアプリとマスターパスワードが必要です。</p>
+<textarea id="exp-out" class="small" readonly></textarea>
+<div class="row"><button class="primary" id="b-copy">コピー</button><button id="b-exp-close">閉じる</button></div>
+</div>
+<p class="sub" style="margin-top:14px">5分操作がないと自動で保存してロックします。</p>
+</section>
+</main>
+
+<script>
+(function(){
+"use strict";
+var KEY="secure-editor.vault.v1", PREFIX="PWE1.", ITER=600000, IDLE_MS=5*60*1000;
+var cryptoKey=null, salt=null, dirty=false, idleTimer=null;
+var $=function(id){return document.getElementById(id)};
+var enc=new TextEncoder(), dec=new TextDecoder();
+
+function toB64(u8){var s="";for(var i=0;i<u8.length;i+=0x8000){s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000))}return btoa(s)}
+function fromB64(b){var s=atob(b),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u}
+
+function store(v){try{localStorage.setItem(KEY,v);return true}catch(e){return false}}
+function load(){try{return localStorage.getItem(KEY)}catch(e){return null}}
+function wipeStore(){try{localStorage.removeItem(KEY)}catch(e){}}
+
+async function derive(pw,s){
+  var m=await crypto.subtle.importKey("raw",enc.encode(pw),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt:s,iterations:ITER,hash:"SHA-256"},m,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function encryptText(text){
+  var iv=crypto.getRandomValues(new Uint8Array(12));
+  var ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv:iv},cryptoKey,enc.encode(text)));
+  var out=new Uint8Array(28+ct.length);
+  out.set(salt,0);out.set(iv,16);out.set(ct,28);
+  return PREFIX+toB64(out);
+}
+async function decryptString(str,pw){
+  str=String(str).replace(/\s+/g,"");
+  if(str.indexOf(PREFIX)!==0) throw new Error("format");
+  var raw=fromB64(str.slice(PREFIX.length));
+  if(raw.length<45) throw new Error("format");
+  var s=raw.slice(0,16), iv=raw.slice(16,28), ct=raw.slice(28);
+  var k=await derive(pw,s);
+  var pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:iv},k,ct);
+  return {text:dec.decode(pt),key:k,salt:s};
+}
+
+function msg(t,cls){var m=$("msg");m.textContent=t||"";m.className=cls||""}
+function show(name){
+  ["setup","lock","restore","editor"].forEach(function(n){$("v-"+n).hidden=(n!==name)});
+  msg("");
+}
+function setDirty(d){dirty=d;$("dirty").hidden=!d}
+function resetIdle(){
+  clearTimeout(idleTimer);
+  if(!cryptoKey) return;
+  idleTimer=setTimeout(function(){lockNow(true)},IDLE_MS);
+}
+async function saveNow(){
+  if(!cryptoKey) return false;
+  var s=await encryptText($("ed").value);
+  if(!store(s)){msg("保存に失敗しました(ブラウザの保存領域が使えません)。暗号文を出力して手動で控えてください。","err");return false}
+  setDirty(false);return true;
+}
+async function lockNow(autosave){
+  if(cryptoKey&&autosave&&dirty){try{await saveNow()}catch(e){}}
+  cryptoKey=null;salt=null;clearTimeout(idleTimer);
+  $("ed").value="";$("exp-out").value="";$("exp").hidden=true;$("l-pw").value="";setDirty(false);
+  show(load()?"lock":"setup");
+}
+function openEditor(text){
+  $("ed").value=text;setDirty(false);$("exp").hidden=true;show("editor");resetIdle();
+}
+
+// セットアップ
+$("b-setup").onclick=async function(){
+  var a=$("s-pw").value,b=$("s-pw2").value;
+  if(a.length<8){msg("8文字以上にしてください。","err");return}
+  if(a!==b){msg("確認用のパスワードが一致しません。","err");return}
+  try{
+    salt=crypto.getRandomValues(new Uint8Array(16));
+    cryptoKey=await derive(a,salt);
+    var ok=store(await encryptText(""));
+    $("s-pw").value="";$("s-pw2").value="";
+    if(!ok){msg("この環境では端末内への保存ができません。暗号文の出力で手動バックアップしてください。","err")}
+    openEditor("");
+  }catch(e){msg("設定に失敗しました。","err")}
+};
+
+// 解除
+async function unlock(){
+  var pw=$("l-pw").value,v=load();
+  if(!pw||!v) return;
+  msg("復号中…");
+  try{
+    var r=await decryptString(v,pw);
+    cryptoKey=r.key;salt=r.salt;$("l-pw").value="";
+    openEditor(r.text);
+  }catch(e){msg("パスワードが違うか、データが壊れています。","err")}
+}
+$("b-unlock").onclick=unlock;
+$("l-pw").addEventListener("keydown",function(e){if(e.key==="Enter")unlock()});
+
+// 消去
+$("b-wipe").onclick=function(){
+  if(confirm("この端末に保存された暗号化データを完全に消去します。バックアップ(暗号文)がない場合、元に戻せません。よろしいですか?")){
+    wipeStore();show("setup");
+  }
+};
+
+// 復元
+var restoreFrom="lock";
+document.querySelectorAll("[data-go=restore]").forEach(function(b){
+  b.onclick=function(){restoreFrom=cryptoKey?"editor":(load()?"lock":"setup");show("restore")};
+});
+$("b-import").onclick=function(){restoreFrom="editor";show("restore")};
+$("b-restore-cancel").onclick=function(){show(cryptoKey?"editor":(load()?"lock":"setup"))};
+$("b-restore").onclick=async function(){
+  var str=$("r-str").value,pw=$("r-pw").value;
+  if(!str.trim()||!pw){msg("暗号文とパスワードを入力してください。","err");return}
+  if(load()||cryptoKey){if(!confirm("この端末の現在の内容を、暗号文の内容で置き換えます。よろしいですか?"))return}
+  msg("復号中…");
+  try{
+    var r=await decryptString(str,pw);
+    cryptoKey=r.key;salt=r.salt;
+    store(await encryptText(r.text));
+    $("r-str").value="";$("r-pw").value="";
+    openEditor(r.text);msg("復元しました。","ok");
+  }catch(e){
+    msg(e.message==="format"?"暗号文の形式が正しくありません(PWE1. から始まる全文を貼り付けてください)。":"パスワードが違うか、暗号文が壊れています。","err");
+  }
+};
+
+// エディタ操作
+$("ed").addEventListener("input",function(){setDirty(true);resetIdle()});
+$("b-save").onclick=async function(){
+  try{if(await saveNow()){msg("暗号化して保存しました。","ok");resetIdle()}}catch(e){msg("保存に失敗しました。","err")}
+};
+$("b-export").onclick=async function(){
+  try{
+    var ok=await saveNow();
+    $("exp-out").value=load()||await encryptText($("ed").value);
+    $("exp").hidden=false;
+    if(ok)msg("保存し、暗号文を出力しました。","ok");
+    $("exp").scrollIntoView({behavior:"smooth",block:"nearest"});resetIdle();
+  }catch(e){msg("出力に失敗しました。","err")}
+};
+$("b-exp-close").onclick=function(){$("exp").hidden=true;$("exp-out").value=""};
+$("b-copy").onclick=async function(){
+  var t=$("exp-out").value;
+  try{await navigator.clipboard.writeText(t);msg("コピーしました。","ok")}
+  catch(e){var o=$("exp-out");o.removeAttribute("readonly");o.focus();o.select();o.setSelectionRange(0,t.length);
+    var ok=false;try{ok=document.execCommand("copy")}catch(_){}
+    o.setAttribute("readonly","");msg(ok?"コピーしました。":"自動コピーできませんでした。選択された文字列を手動でコピーしてください。",ok?"ok":"err")}
+};
+$("b-lock").onclick=function(){lockNow(true)};
+["pointerdown","keydown","touchstart"].forEach(function(ev){document.addEventListener(ev,resetIdle,{passive:true})});
+window.addEventListener("beforeunload",function(e){if(dirty){e.preventDefault();e.returnValue=""}});
+
+// 起動
+if(!window.crypto||!crypto.subtle){
+  msg("このブラウザ/接続では暗号機能(Web Crypto)が使えません。HTTPS で開いてください。","err");
+}else{
+  show(load()?"lock":"setup");
+}
+})();
+</script>
+</body>
+</html>
