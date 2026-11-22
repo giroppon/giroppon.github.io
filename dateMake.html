@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>日付ファイル分け変換</title>
+<style>
+:root{--bg:#f6f6f4;--surface:#fff;--text:#1c1c1a;--muted:#6b6b66;--line:#d8d8d2;--accent:#1d5fd1;--accent-t:#fff;--ok:#1e7a46;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141413;--surface:#1f1f1d;--text:#ececE8;--muted:#9a9a93;--line:#34342f;--accent:#6aa0ff;--accent-t:#0b1a33;--ok:#5fd394;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141413;--surface:#1f1f1d;--text:#ececE8;--muted:#9a9a93;--line:#34342f;--accent:#6aa0ff;--accent-t:#0b1a33;--ok:#5fd394;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}
+p.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+label{display:block;font-size:14px;color:var(--muted);margin:14px 0 4px}
+textarea,input{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px}
+textarea{min-height:150px;resize:vertical;line-height:1.5}
+#out{min-height:320px;font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.row input{width:90px}
+button{font:inherit;font-size:16px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-t);border-radius:8px;padding:9px 18px;cursor:pointer}
+#cnt{font-size:14px;color:var(--muted)}
+#msg{font-size:14px;color:var(--ok);min-height:22px}
+</style>
+</head>
+<body>
+<main>
+<h1>日付ファイル分け変換</h1>
+<p class="sub">半角の日付を1行ずつ入力すると、全角の日付と空白の段落を「-----」で区切った形式に変換します。plainNote の「データを読み込み」にそのまま貼り付けられます。</p>
+
+<label for="in">日付(1行に1つ)</label>
+<textarea id="in" spellcheck="false" autocapitalize="off" autocorrect="off">2027/03/01
+2027/03/02
+2027/03/03
+2027/03/04
+2027/03/05</textarea>
+
+<div class="row">
+<label for="n" style="margin:0">段落数</label>
+<input id="n" type="number" inputmode="numeric" min="1" max="200" value="10">
+<span id="cnt"></span>
+</div>
+
+<label for="out">変換結果</label>
+<textarea id="out" readonly></textarea>
+<div class="row"><button id="copy">コピー</button><span id="msg"></span></div>
+</main>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+function fw(s){
+  return s.replace(/[!-~]/g,function(c){return String.fromCharCode(c.charCodeAt(0)+0xFEE0)}).replace(/ /g,"\u3000");
+}
+function build(){
+  var n=parseInt($("n").value,10);
+  if(!(n>=1))n=10;
+  if(n>200)n=200;
+  var lines=$("in").value.split(/\r?\n/).map(function(s){return s.trim()}).filter(Boolean);
+  var body=[];
+  for(var i=0;i<n;i++)body.push(i===n-1?"\u3000\u25BC":"\u3000");
+  var chunk=body.join("\n");
+  $("out").value=lines.map(function(l){return fw(l)+"\n"+chunk}).join("\n\n-----\n\n");
+  $("cnt").textContent=lines.length+"件のファイル";
+  $("msg").textContent="";
+}
+$("in").addEventListener("input",build);
+$("n").addEventListener("input",build);
+$("copy").onclick=async function(){
+  var o=$("out"),t=o.value;
+  if(!t){$("msg").textContent="コピーする内容がありません";return}
+  try{await navigator.clipboard.writeText(t);$("msg").textContent="コピーしました"}
+  catch(e){
+    o.readOnly=false;o.focus();o.select();o.setSelectionRange(0,t.length);
+    var ok=false;try{ok=document.execCommand("copy")}catch(_){}
+    o.readOnly=true;$("msg").textContent=ok?"コピーしました":"選択された文字列を手動でコピーしてください";
+  }
+};
+build();
+})();
+</script>
+</body>
+</html>
