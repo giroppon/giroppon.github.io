@@ -17,15 +17,22 @@
   box-sizing:border-box;
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:#000;color:var(--text);font-family:"Courier New",ui-monospace,monospace;line-height:1.45;overscroll-behavior-y:none}
+html,body{height:100%;margin:0;overflow:hidden;background:#000;color:var(--text);font-family:"Courier New",ui-monospace,monospace;line-height:1.45;overscroll-behavior-y:none}
 /* iPhone上部のぼかし・グラデーション防止用：セーフエリアを純黒でパキッと覆う */
 body::before{
   content:"";position:fixed;top:0;left:0;right:0;height:var(--safe-top);
   background:#000;z-index:20;pointer-events:none;
 }
 #app{
-  max-width:560px;margin:0 auto;
-  padding:calc(var(--safe-top) + 8px) 12px calc(var(--safe-bottom) + 40px);
+  max-width:560px;margin:0 auto;height:100%;height:100dvh;
+  display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:none;
+  padding:calc(var(--safe-top) + 8px) 12px 0;
+}
+#app.split{overflow:hidden}
+.fixed-top{flex:none}
+.scroll-area{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;padding-bottom:calc(var(--safe-bottom) + 40px);
 }
 h1{font-size:1.1rem;margin:0 0 4px}
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:10px}
@@ -57,9 +64,6 @@ button.ghost{border:1px dashed var(--sub);color:var(--sub)}
 
 /* 上部固定エリア */
 .sticky-hud{
-  position:sticky;
-  top:var(--safe-top);
-  z-index:10;
   background:#000;
   padding-top:2px;
   padding-bottom:4px;
@@ -146,7 +150,7 @@ const MONSTERS=[
  {name:'深層ガーディアン',hp:38,atk:9,def:6,gold:[20,40],undead:false,min:5,max:11},
 ];
 
-// 12階（最深部）のラスボス（ATC100以上・DEF100以上が攻略基準）
+// 12階（最深部）のラスボス（ATK100以上・DEF100以上が攻略基準）
 const FINAL_BOSS = {
   name:'深淵の統括機【ラスボス】',
   hp:600, maxHp:600,
@@ -333,7 +337,20 @@ function render(){
   else if(S.screen==='items') html=renderItems();
   else if(S.screen==='gameover') html=renderGameover();
 
+  const prevScroll = app.querySelector('.scroll-area');
+  const prevTop = prevScroll ? prevScroll.scrollTop : 0;
   app.innerHTML = html + ((S.menuOpen && S.screen==='start') ? renderMenuOverlay() : '');
+  const hud = app.querySelector('.sticky-hud');
+  app.classList.toggle('split', !!hud);
+  if(hud){
+    const fixedTop = document.createElement('div'); fixedTop.className = 'fixed-top';
+    const scrollArea = document.createElement('div'); scrollArea.className = 'scroll-area';
+    const kids = Array.from(app.childNodes);
+    const idx = kids.indexOf(hud);
+    kids.forEach((n,i)=>{ (i<=idx ? fixedTop : scrollArea).appendChild(n); });
+    app.appendChild(fixedTop); app.appendChild(scrollArea);
+    scrollArea.scrollTop = prevTop;
+  }
 
   if(S.screen !== 'start'){
     const lines = getMsgLines();
@@ -362,7 +379,7 @@ function renderMenuOverlay(){
           <span>最大HP</span><input type="number" value="${S.maxHp}" onchange="setDebugStat('maxHp',this.value)">
           <span>エネルギー</span><input type="number" value="${S.energy}" onchange="setDebugStat('energy',this.value)">
           <span>最大エネルギー</span><input type="number" value="${S.maxEnergy}" onchange="setDebugStat('maxEnergy',this.value)">
-          <span>素ATC</span><input type="number" value="${S.atk}" onchange="setDebugStat('atk',this.value)">
+          <span>素ATK</span><input type="number" value="${S.atk}" onchange="setDebugStat('atk',this.value)">
           <span>素DEF</span><input type="number" value="${S.def}" onchange="setDebugStat('def',this.value)">
           <span>技能</span><input type="number" value="${S.skill}" onchange="setDebugStat('skill',this.value)">
           <span>所持金(G)</span><input type="number" value="${S.gold}" onchange="setDebugStat('gold',this.value)">
@@ -425,7 +442,7 @@ function hudBlock(){
   const hpP = Math.max(0, Math.min(100, Math.round(S.hp / Math.max(1, S.maxHp) * 100)));
   const enP = Math.max(0, Math.min(100, Math.round(S.energy / Math.max(1, S.maxEnergy) * 100)));
 
-  // 武器耐久バー（ATCの下）
+  // 武器耐久バー（ATKの下）
   const w = S.equipment.weapon;
   let wDurP = 100;
   if(w && !w.junk && w.key!=='junk'){
@@ -445,14 +462,14 @@ function hudBlock(){
   return `<div class="sticky-hud">
     <div class="panel" id="playerBox" style="margin-bottom:8px">
       <div class="hud-grid">
-        <!-- 左列：HP・ATC・DEF を均等な間隔で縦並び -->
+        <!-- 左列：HP・ATK・DEF を均等な間隔で縦並び -->
         <div class="hud-col-left">
           <div class="hud-cell">
             <div class="hud-line"><span>HP</span><span>${S.hp}/${S.maxHp}</span></div>
             <div class="statbar"><div class="hpfill" style="width:${hpP}%"></div></div>
           </div>
           <div class="hud-cell">
-            <div class="hud-line"><span>ATC</span><span>${atkTotal()}</span><span class="sub" style="font-size:.74rem">(${S.atk}+${weaponPower()})</span></div>
+            <div class="hud-line"><span>ATK</span><span>${atkTotal()}</span><span class="sub" style="font-size:.74rem">(${S.atk}+${weaponPower()})</span></div>
             <div class="statbar"><div class="hpfill" style="width:${wDurP}%"></div></div>
           </div>
           <div class="hud-cell">
@@ -708,7 +725,7 @@ function equip(u){
   if(it.cursed && !it.locked){
     it.identified=true; it.cursedRevealed=true; it.locked=true;
     if(slot==='weapon') S.atk-=2; else S.def-=1;
-    toast('呪われていた！ '+dispName(it)+' が外せなくなった('+(slot==='weapon'?'ATC -2':'DEF -1')+')');
+    toast('呪われていた！ '+dispName(it)+' が外せなくなった('+(slot==='weapon'?'ATK -2':'DEF -1')+')');
   } else {
     toast(dispName(it)+'を装備した。');
   }
