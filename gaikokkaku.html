@@ -3,24 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>外骨格ローグ(仮)</title>
 <style>
 :root{
   --bg:#000; --panel:#000; --text:#fff; --sub:#bdbdbd;
   --accent:#fff; --danger:#fff; --warn:#fff; --border:#fff; --r:6px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
   color-scheme: dark;
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--text);font-family:"Courier New",ui-monospace,monospace;line-height:1.5}
-#app{max-width:560px;margin:0 auto;padding:16px 14px 40px}
+html,body{height:100%;margin:0;background:#000;color:var(--text);font-family:"Courier New",ui-monospace,monospace;line-height:1.45;overscroll-behavior-y:none}
+/* iPhone上部のぼかし・グラデーション防止用：セーフエリアを純黒でパキッと覆う */
+body::before{
+  content:"";position:fixed;top:0;left:0;right:0;height:var(--safe-top);
+  background:#000;z-index:20;pointer-events:none;
+}
+#app{
+  max-width:560px;margin:0 auto;
+  padding:calc(var(--safe-top) + 8px) 12px calc(var(--safe-bottom) + 40px);
+}
 h1{font-size:1.1rem;margin:0 0 4px}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
-.row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:4px 0}
-.sub{color:var(--sub);font-size:.85rem}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0}
+.sub{color:var(--sub);font-size:.82rem}
 button{
   display:block;width:100%;text-align:left;background:var(--panel);color:var(--text);
   border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin:6px 0;
@@ -30,25 +40,69 @@ button:active{background:#333}
 button:disabled{opacity:.35;cursor:default}
 button.primary{border-style:double;border-width:3px}
 button.start{background:#fff;color:#000;border-color:#fff;font-weight:bold;text-align:center}
-input[type=number]{background:#000;color:#fff;border:1px solid var(--border);border-radius:min(var(--r),8px);padding:4px 6px;font-family:inherit;width:64px}
+input[type=number]{background:#000;color:#fff;border:1px solid var(--border);border-radius:min(var(--r),8px);padding:4px 6px;font-family:inherit;width:72px}
 input[type=range]{accent-color:#fff;width:100%}
 button.danger{border-style:double;border-width:3px}
 button.ghost{border:1px dashed var(--sub);color:var(--sub)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.statbar{height:10px;border:1px solid var(--border);background:#000;overflow:hidden;margin-top:2px;border-radius:min(var(--r),6px)}
+.statbar{height:9px;border:1px solid var(--border);background:#000;overflow:hidden;margin-top:3px;border-radius:min(var(--r),6px)}
 .statbar>div{height:100%}
 .hpfill{background:#fff}
-.enfill{background:repeating-linear-gradient(90deg,#fff 0 4px,#000 4px 6px)}
-.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.menubtn{background:none;border:none;color:var(--text);font-size:1.4rem;cursor:pointer;width:auto;padding:4px 8px}
-.log{max-height:160px;overflow-y:auto;font-size:.85rem;color:var(--sub);border-top:1px solid var(--border);padding-top:8px;margin-top:8px}
-.log div{margin:2px 0}
+.enfill{background:#fff}
+.menubtn{background:#000;border:1px solid transparent;color:var(--text);font-size:1.4rem;cursor:pointer;width:auto;padding:4px 8px;z-index:10}
 .center{text-align:center}
-.startwrap{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:70vh;position:relative}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:5}
-.overlaybox{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:18px;width:min(320px,90vw)}
+.startwrap{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:75vh;position:relative}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:30;padding:12px}
+.overlaybox{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:16px;width:min(360px,94vw);max-height:88vh;overflow-y:auto}
 .tag{display:inline-block;border-radius:min(var(--r),8px);font-size:.75rem;padding:1px 6px;border:1px solid var(--border);color:var(--sub);margin-left:4px}
-.msgwin{height:6.8rem;overflow-y:auto;font-size:.9rem;padding:8px 12px;line-height:1.45}
+
+/* 上部固定エリア */
+.sticky-hud{
+  position:sticky;
+  top:var(--safe-top);
+  z-index:10;
+  background:#000;
+  padding-top:2px;
+  padding-bottom:4px;
+  border-bottom:1px solid #000;
+}
+
+/* 左右独立カラムによる均等間隔ステータスレイアウト */
+.hud-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0 14px;
+  align-items:stretch;
+  font-size:.86rem;
+}
+.hud-col-left{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+}
+.hud-col-right{
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:6px;
+  min-width:0;
+}
+.hud-cell{display:flex;flex-direction:column;min-width:0}
+.hud-line{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.hud-inline-pair{display:flex;justify-content:space-between;align-items:baseline;gap:6px;white-space:nowrap;font-size:.82rem}
+
+/* メッセージウィンドウ（文字列2行ほどの高さ） */
+.msgwin{
+  height:3.6rem;
+  overflow-y:auto;
+  font-size:.88rem;
+  padding:7px 10px;
+  line-height:1.4;
+  margin-bottom:8px;
+}
+
+.debug-grid{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;margin:8px 0 12px;font-size:.85rem}
+
 @keyframes shake{
   0%,100%{transform:translateX(0);filter:none}
   15%{transform:translateX(-9px);filter:invert(1)}
@@ -64,42 +118,102 @@ button.ghost{border:1px dashed var(--sub);color:var(--sub)}
 <div id="app"></div>
 <script>
 // ===================== データ =====================
+const MAX_DEPTH = 12;
+
 const ITEMS = {
   club:{name:'棍棒',type:'weapon',power:3,price:10,maxDur:20},
   dagger:{name:'ダガー',type:'weapon',power:4,price:15,maxDur:15},
   sword:{name:'鋼の剣',type:'weapon',power:7,price:40,maxDur:25},
   robe:{name:'ローブ',type:'armor',power:2,price:12,maxDur:20},
   exo:{name:'外骨格',type:'armor',power:4,price:25,maxDur:30},
-  healPotion:{name:'回復薬',type:'potion',price:15,fixed:true,effect:'heal'},
+  healPotion:{name:'HP回復薬',type:'potion',price:15,effect:'heal'},
   capsule:{name:'薬',type:'potion',price:15,effect:'random'},
   idScroll:{name:'鑑定スキャナー',type:'tool',price:20,effect:'identify'},
   curseFix:{name:'デバッグツール',type:'tool',price:50,effect:'removeCurse'},
-  energyPotion:{name:'エネルギー回復薬',type:'potion',price:20,fixed:true,effect:'energy'},
-  hpSeed:{name:'HPの種',type:'seed',price:40,fixed:true,effect:'seedHp'},
-  enSeed:{name:'エネルギーの種',type:'seed',price:40,fixed:true,effect:'seedEn'},
-  skillSeed:{name:'技能の種',type:'seed',price:40,fixed:true,effect:'seedSkill'},
+  energyPotion:{name:'EN回復薬',type:'potion',price:20,effect:'energy'},
+  hpSeed:{name:'HPの種',type:'seed',price:40,effect:'seedHp'},
+  enSeed:{name:'エネルギーの種',type:'seed',price:40,effect:'seedEn'},
+  skillSeed:{name:'技能の種',type:'seed',price:40,effect:'seedSkill'},
+  junk:{name:'ガラクタ',type:'junk',price:1,fixed:true},
 };
 const DEFAULT_SHOP = ['club','robe','healPotion'];
+
 const MONSTERS=[
- {name:'錆びたドローン',hp:10,atk:3,gold:[4,10],undead:false,min:1,max:4},
- {name:'徘徊ワーム',hp:15,atk:4,gold:[6,14],undead:false,min:1,max:5},
- {name:'腐食ゾンビ外骨格',hp:18,atk:4,gold:[8,16],undead:true,min:2,max:7},
- {name:'バグ化メカ',hp:24,atk:6,gold:[12,24],undead:false,min:3,max:9},
- {name:'深層ガーディアン',hp:38,atk:9,gold:[20,40],undead:false,min:5,max:12},
+ {name:'錆びたドローン',hp:10,atk:3,def:0,gold:[4,10],undead:false,min:1,max:4},
+ {name:'徘徊ワーム',hp:15,atk:4,def:1,gold:[6,14],undead:false,min:1,max:5},
+ {name:'腐食ゾンビ外骨格',hp:18,atk:4,def:2,gold:[8,16],undead:true,min:2,max:7},
+ {name:'バグ化メカ',hp:24,atk:6,def:4,gold:[12,24],undead:false,min:3,max:9},
+ {name:'深層ガーディアン',hp:38,atk:9,def:6,gold:[20,40],undead:false,min:5,max:11},
 ];
+
+// 12階（最深部）のラスボス（ATC100以上・DEF100以上が攻略基準）
+const FINAL_BOSS = {
+  name:'深淵の統括機【ラスボス】',
+  hp:600, maxHp:600,
+  atk:115, def:95,
+  goldMin:500, goldMax:500,
+  undead:false, isBoss:true
+};
 
 // ===================== 状態 =====================
 let uidSeed = 1;
 function uid(){ return uidSeed++; }
 let S = loadState();
-if(S){ uidSeed = S.uid || uidSeed; } else { S = freshState(); }
+if(S){
+  uidSeed = S.uid || uidSeed;
+  if(S.statusCursed) delete S.statusCursed;
+  [...(S.backpack||[]), S.equipment?.weapon, S.equipment?.armor].filter(Boolean).forEach(it=>{
+    if(it.junk) convertToJunk(it);
+  });
+} else {
+  S = freshState();
+}
+
 let toastMsg='';
 let msgFresh=false;
 document.addEventListener('click',e=>{ if(e.target.closest && e.target.closest('button')) msgFresh=true; },true);
+
+// 10msタイプライター演出管理
+let twTimer = null;
+let twLastTarget = '';
+let twCurrentText = '';
+
+function triggerTypewriter(fullText){
+  if(fullText === twLastTarget) return;
+  twLastTarget = fullText;
+  if(twTimer){ clearInterval(twTimer); twTimer = null; }
+  if(!fullText){
+    twCurrentText = '';
+    return;
+  }
+  let idx = 0;
+  twCurrentText = '';
+  twTimer = setInterval(()=>{
+    idx++;
+    twCurrentText = fullText.slice(0, idx);
+    const el = document.getElementById('msgLatest');
+    if(el) el.textContent = twCurrentText;
+    const box = document.getElementById('msgBox');
+    if(box) box.scrollTop = box.scrollHeight;
+    if(idx >= fullText.length){
+      clearInterval(twTimer);
+      twTimer = null;
+    }
+  }, 10);
+}
+
 function toast(msg){
-  if(S.run){ pushLog(msg); render(); return; } // ダンジョン内はログとして残る
+  if(S.run){ pushLog(msg); render(); return; }
   toastMsg=msg; render();
-  setTimeout(()=>{ if(toastMsg===msg){ toastMsg=''; render(); } }, 3500);
+}
+
+function gotoScreen(scr, locMsg){
+  S.screen = scr;
+  if(locMsg){
+    if(S.run) pushLog(locMsg);
+    else toastMsg = locMsg;
+  }
+  render();
 }
 
 function freshState(){
@@ -112,14 +226,32 @@ function freshState(){
     equipment:{weapon:null,armor:null},
     shop:{},
     screen:'start', menuOpen:false, radius:6,
-    run:null, // {depth,turns,encounter,log:[]}
+    run:null,
   };
 }
 function saveState(){ S.uid=uidSeed; localStorage.setItem('exo_rogue_save', JSON.stringify(S)); }
 function loadState(){ try{ const raw=localStorage.getItem('exo_rogue_save'); return raw?JSON.parse(raw):null; }catch(e){ return null; } }
 
-// ===================== アイテム生成 =====================
+// ===================== アイテム生成・変換 =====================
+function convertToJunk(it){
+  it.key = 'junk';
+  it.junk = true;
+  it.identified = true;
+  it.cursed = false;
+  it.cursedRevealed = false;
+  it.locked = false;
+  delete it.level;
+  delete it.durability;
+  delete it.maxDurability;
+  delete it.effect;
+}
+
 function genInstance(key, depth, guaranteedSafe){
+  if(key === 'junk'){
+    const it = {uid:uid(), key:'junk'};
+    convertToJunk(it);
+    return it;
+  }
   const base = ITEMS[key];
   const it = {uid:uid(), key};
   if(base.type==='weapon'||base.type==='armor'){
@@ -132,10 +264,12 @@ function genInstance(key, depth, guaranteedSafe){
   }
   if(base.fixed){ it.identified=true; }
   else { it.identified = guaranteedSafe ? true : Math.random()<0.2; }
-  if(it.cursed){ it.identified=false; it.cursedRevealed=false; } // 呪い品は必ず不確定名
+  if(it.cursed){ it.identified=false; it.cursedRevealed=false; }
   if(base.type==='potion' && base.effect==='random'){
-    const r=Math.random(); it.effect = r<0.4?'heal':(r<0.7?'cureCurse':'curse');
-  } else if(base.effect && base.effect!=='random'){ it.effect = base.effect; }
+    it.effect = Math.random()<0.55 ? 'heal' : 'cureCurse';
+  } else if(base.effect && base.effect!=='random'){
+    it.effect = base.effect;
+  }
   return it;
 }
 function setLevel(it,L){ const b=ITEMS[it.key]; it.level=L; it.maxDurability=Math.round(b.maxDur*(1+(L-1)*0.3)); it.durability=it.maxDurability; }
@@ -146,21 +280,29 @@ function uncurseItem(it){
   it.cursed=false; it.cursedRevealed=false; return true;
 }
 function durBar(it){
+  if(it.junk || it.key==='junk') return '';
   const t=ITEMS[it.key].type; if(t!=='weapon'&&t!=='armor') return '';
   const r=Math.max(0,Math.min(100,Math.round(it.durability/it.maxDurability*100)));
   return `<div class="statbar" style="margin-top:4px"><div class="hpfill" style="width:${r}%"></div></div>`;
 }
 function dispName(it){
+  if(it.junk || it.key==='junk') return 'ガラクタ';
   const b=ITEMS[it.key];
+  // 不確定名の統一ルール
+  if(!it.identified){
+    if(b.type==='seed' || b.type==='tool') return '謎の端末';
+    if(b.type==='potion') return '謎の液体';
+    return '謎の'+b.name;
+  }
   let base=b.name;
-  if(it.key==='capsule' && it.identified) base=({heal:'回復薬',cureCurse:'解呪薬',curse:'呪いの薬'})[it.effect]||b.name;
-  let n = it.identified ? base : ('謎の'+b.name);
-  if((b.type==='weapon'||b.type==='armor') && it.identified) n+=' Lv'+it.level;
-  if(it.junk) n+='(ガラクタ)';
+  if(it.key==='capsule') base=({heal:'HP回復薬',cureCurse:'解呪薬'})[it.effect]||b.name;
+  let n = base;
+  if(b.type==='weapon'||b.type==='armor') n+=' Lv'+it.level;
   if(it.cursedRevealed) n+='(呪)';
   return n;
 }
 function refPrice(it){
+  if(it.junk || it.key==='junk') return 1;
   const b=ITEMS[it.key];
   if(b.type==='weapon'||b.type==='armor'){
     return priceFor(it.key, it.level||1);
@@ -190,20 +332,55 @@ function render(){
   else if(S.screen==='combat') html=renderCombat();
   else if(S.screen==='items') html=renderItems();
   else if(S.screen==='gameover') html=renderGameover();
+
   app.innerHTML = html + ((S.menuOpen && S.screen==='start') ? renderMenuOverlay() : '');
+
+  if(S.screen !== 'start'){
+    const lines = getMsgLines();
+    const latest = lines.length ? lines[lines.length - 1] : '';
+    triggerTypewriter(latest);
+    const el = document.getElementById('msgLatest');
+    if(el) el.textContent = (latest === twLastTarget) ? twCurrentText : latest;
+    const box = document.getElementById('msgBox');
+    if(box) box.scrollTop = box.scrollHeight;
+  }
+
   try{ saveState(); }catch(e){}
 }
-function topbar(title){
-  return `<div class="topbar"><h1>${title}</h1></div>`;
-}
+
+// スタートメニュー「≡」（デバッグ機能＋設定）
 function renderMenuOverlay(){
   return `<div class="overlay" onclick="toggleMenu()">
     <div class="overlaybox" onclick="event.stopPropagation()">
       <div class="row"><span>角丸(px)</span><input id="radNum" type="number" min="0" max="40" value="${S.radius==null?6:S.radius}" oninput="setRadius(this.value,'radRange')"></div>
-      <input id="radRange" type="range" min="0" max="40" value="${S.radius==null?6:S.radius}" oninput="setRadius(this.value,'radNum')" style="margin:6px 0 14px">
+      <input id="radRange" type="range" min="0" max="40" value="${S.radius==null?6:S.radius}" oninput="setRadius(this.value,'radNum')" style="margin:6px 0 12px">
+
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
+        <div class="sub" style="margin-bottom:6px">デバッグ：パラメータ変更</div>
+        <div class="debug-grid">
+          <span>HP</span><input type="number" value="${S.hp}" onchange="setDebugStat('hp',this.value)">
+          <span>最大HP</span><input type="number" value="${S.maxHp}" onchange="setDebugStat('maxHp',this.value)">
+          <span>エネルギー</span><input type="number" value="${S.energy}" onchange="setDebugStat('energy',this.value)">
+          <span>最大エネルギー</span><input type="number" value="${S.maxEnergy}" onchange="setDebugStat('maxEnergy',this.value)">
+          <span>素ATC</span><input type="number" value="${S.atk}" onchange="setDebugStat('atk',this.value)">
+          <span>素DEF</span><input type="number" value="${S.def}" onchange="setDebugStat('def',this.value)">
+          <span>技能</span><input type="number" value="${S.skill}" onchange="setDebugStat('skill',this.value)">
+          <span>所持金(G)</span><input type="number" value="${S.gold}" onchange="setDebugStat('gold',this.value)">
+          <span>到達深層</span><input type="number" min="1" max="${MAX_DEPTH}" value="${S.maxDepthReached}" onchange="setDebugStat('maxDepthReached',this.value)">
+        </div>
+      </div>
+
       <button class="danger" onclick="resetGame()">記録を消す</button>
       <button class="ghost" onclick="toggleMenu()">閉じる</button>
     </div></div>`;
+}
+function setDebugStat(key, val){
+  const v = Math.max(0, Math.round(Number(val)||0));
+  if(key==='maxDepthReached') S[key] = Math.max(1, Math.min(MAX_DEPTH, v));
+  else S[key] = v;
+  if(key==='maxHp' && S.hp>S.maxHp) S.hp=S.maxHp;
+  if(key==='maxEnergy' && S.energy>S.maxEnergy) S.energy=S.maxEnergy;
+  render();
 }
 function applyRadius(){ document.documentElement.style.setProperty('--r',(S.radius==null?6:S.radius)+'px'); }
 function setRadius(v,otherId){
@@ -213,57 +390,122 @@ function setRadius(v,otherId){
   try{ saveState(); }catch(e){}
 }
 function toggleMenu(){ S.menuOpen=!S.menuOpen; render(); }
-function resetGame(){ localStorage.removeItem('exo_rogue_save'); S=freshState(); uidSeed=1; render(); }
+function resetGame(){ localStorage.removeItem('exo_rogue_save'); S=freshState(); uidSeed=1; twLastTarget=''; render(); }
 
 function renderStart(){
   return `<div class="startwrap">
     <h1 style="font-size:1.6rem">外骨格ローグ(仮)</h1>
     <p class="sub">金こそがすべて。深層で稼ぎ、街で拡張せよ。</p>
-    <button class="start" style="max-width:220px" onclick="S.screen='town';render()">ゲームを始める</button>
-  </div><button class="menubtn" style="position:fixed;top:10px;right:10px" onclick="toggleMenu()">≡</button>`;
+    <button class="start" style="max-width:220px" onclick="gotoScreen('town','【町】冒険の拠点。設備を整えよう。')">ゲームを始める</button>
+  </div><button class="menubtn" style="position:fixed;top:calc(var(--safe-top) + 8px);right:10px" onclick="toggleMenu()">≡</button>`;
+}
+
+function getMsgLines(){
+  if(S.run) return S.run.log.slice(-2);
+  if(toastMsg) return [toastMsg];
+  return [];
 }
 
 function msgWindow(){
-  let lines=[];
-  if(S.run) lines=S.run.log.slice(-4);
-  else if(toastMsg) lines=[toastMsg];
-  return `<div class="panel msgwin" id="msgBox">${lines.map((l,i)=>`<div${i<lines.length-1?' class="sub"':''}>${l}</div>`).join('')}</div>`;
+  const lines = getMsgLines();
+  if(lines.length === 0){
+    return `<div class="panel msgwin" id="msgBox"><div id="msgLatest"></div></div>`;
+  }
+  if(lines.length === 1){
+    return `<div class="panel msgwin" id="msgBox"><div id="msgLatest">${lines[0]}</div></div>`;
+  }
+  return `<div class="panel msgwin" id="msgBox">
+    <div class="sub">${lines[0]}</div>
+    <div id="msgLatest">${lines[1]}</div>
+  </div>`;
 }
-function statBlock(){
-  const hpP=Math.max(0,Math.round(S.hp/S.maxHp*100));
-  const enP=Math.max(0,Math.round(S.energy/S.maxEnergy*100));
-  return `<div class="panel" id="playerBox">
-    <div class="row"><span>HP ${S.hp}/${S.maxHp}${S.statusCursed?' (呪)':''}</span><span>所持金 ${S.gold}G${S.debt>0?` <span class="tag">借金${S.debt}G</span>`:''}</span></div>
-    <div class="statbar"><div class="hpfill" style="width:${hpP}%"></div></div>
-    <div class="row" style="margin-top:6px"><span>エネルギー ${S.energy}/${S.maxEnergy}</span></div>
-    <div class="statbar"><div class="enfill" style="width:${enP}%"></div></div>
-    <div class="row" style="margin-top:6px"><span>ATK ${atkTotal()} <span class="sub">(素${S.atk}+装備${weaponPower()})</span></span><span>DEF ${defTotal()} <span class="sub">(素${S.def}+装備${armorPower()})</span></span></div>
-    <div class="row"><span>技能 ${S.skill} <span class="sub">(宝箱の解除)</span></span></div>
-  </div>${msgWindow()}`;
+
+// 左右独立カラムによる均等間隔ステータス＋メッセージウィンドウ
+function hudBlock(){
+  const hpP = Math.max(0, Math.min(100, Math.round(S.hp / Math.max(1, S.maxHp) * 100)));
+  const enP = Math.max(0, Math.min(100, Math.round(S.energy / Math.max(1, S.maxEnergy) * 100)));
+
+  // 武器耐久バー（ATCの下）
+  const w = S.equipment.weapon;
+  let wDurP = 100;
+  if(w && !w.junk && w.key!=='junk'){
+    wDurP = Math.max(0, Math.min(100, Math.round(w.durability / Math.max(1, w.maxDurability) * 100)));
+  }
+
+  // 防具耐久バー（DEFの下）
+  const a = S.equipment.armor;
+  let aDurP = 100;
+  if(a && !a.junk && a.key!=='junk'){
+    aDurP = Math.max(0, Math.min(100, Math.round(a.durability / Math.max(1, a.maxDurability) * 100)));
+  }
+
+  const turnsDisp = S.run ? S.run.turns : 0;
+  const retCostDisp = S.run ? returnCost() : 0;
+
+  return `<div class="sticky-hud">
+    <div class="panel" id="playerBox" style="margin-bottom:8px">
+      <div class="hud-grid">
+        <!-- 左列：HP・ATC・DEF を均等な間隔で縦並び -->
+        <div class="hud-col-left">
+          <div class="hud-cell">
+            <div class="hud-line"><span>HP</span><span>${S.hp}/${S.maxHp}</span></div>
+            <div class="statbar"><div class="hpfill" style="width:${hpP}%"></div></div>
+          </div>
+          <div class="hud-cell">
+            <div class="hud-line"><span>ATC</span><span>${atkTotal()}</span><span class="sub" style="font-size:.74rem">(${S.atk}+${weaponPower()})</span></div>
+            <div class="statbar"><div class="hpfill" style="width:${wDurP}%"></div></div>
+          </div>
+          <div class="hud-cell">
+            <div class="hud-line"><span>DEF</span><span>${defTotal()}</span><span class="sub" style="font-size:.74rem">(${S.def}+${armorPower()})</span></div>
+            <div class="statbar"><div class="hpfill" style="width:${aDurP}%"></div></div>
+          </div>
+        </div>
+
+        <!-- 右列：EN（＋探索・帰還コスト）・所持金・技能 -->
+        <div class="hud-col-right">
+          <div class="hud-cell">
+            <div class="hud-line"><span>EN</span><span>${S.energy}/${S.maxEnergy}</span></div>
+            <div class="statbar"><div class="enfill" style="width:${enP}%"></div></div>
+            <div class="hud-inline-pair" style="margin-top:5px">
+              <span>探索${turnsDisp}</span>
+              <span>帰還コスト${retCostDisp}</span>
+            </div>
+          </div>
+          <div class="hud-cell">
+            <div class="hud-line"><span>所持金</span><span style="font-weight:bold">${S.gold}G</span></div>
+          </div>
+          <div class="hud-cell" style="padding-bottom:2px">
+            <div class="hud-line"><span>技能</span><span>${S.skill}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${msgWindow()}
+  </div>`;
 }
 
 function renderTown(){
-  return topbar('町')+statBlock()+
+  return hudBlock()+
     `<div class="panel">
-      <button onclick="S.screen='shopMenu';render()">商店</button>
-      <button onclick="S.screen='inn';render()">宿(HP・エネルギー回復)</button>
+      <button onclick="gotoScreen('shopMenu','【商店】武器や道具の売買・修理ができる。')">商店</button>
+      <button onclick="gotoScreen('inn','【宿】体を休めてHPやエネルギーを回復できる。')">宿(HP・エネルギー回復)</button>
       <button onclick="openItems('town')">持ち物</button>
-      <button onclick="S.screen='church';render()">教会(解呪)</button>
-      <button class="primary" onclick="S.screen='dungeonSetup';render()">ダンジョンへ</button>
+      <button onclick="gotoScreen('church','【教会】装備の呪いを解いてもらえる。')">教会(解呪)</button>
+      <button class="primary" onclick="gotoScreen('dungeonSetup','【ダンジョン入口】潜る深層を選択しよう。')">ダンジョンへ</button>
       <button class="ghost" onclick="S.screen='start';render()">スタート画面に戻る</button>
     </div>`;
 }
+
 // ---- 教会 ----
 function churchCost(){ return 30; }
 function cursedList(){
-  return [S.equipment.weapon,S.equipment.armor,...S.backpack].filter(it=>it&&it.cursed&&(it.cursedRevealed||it.locked));
+  return [S.equipment.weapon,S.equipment.armor,...S.backpack].filter(it=>it&&!it.junk&&it.cursed&&(it.cursedRevealed||it.locked));
 }
 function renderChurch(){
   const cost=churchCost();
   const rows=cursedList().map(it=>`<button onclick="churchUncurse(${it.uid})">${dispName(it)}${isEquipped(it)?' <span class="tag">装備中</span>':''} <span class="tag">${cost}G</span></button>`).join('');
-  const self=S.statusCursed?`<button onclick="churchUncurseSelf()">本人の呪い <span class="tag">${cost}G</span></button>`:'';
-  return topbar('教会')+statBlock()+`<div class="panel"><p class="sub">呪いを解いてもらえます。</p>${rows}${self}${(!rows&&!self)?'<p class="sub">解呪が必要なものはありません</p>':''}
-    <button class="ghost" onclick="S.screen='town';render()">戻る</button></div>`;
+  return hudBlock()+`<div class="panel"><p class="sub">呪われた武器・防具を解呪できます。</p>${rows||'<p class="sub">解呪が必要な装備はありません</p>'}
+    <button class="ghost" onclick="gotoScreen('town','【町】に戻った。')">戻る</button></div>`;
 }
 function churchUncurse(u){
   const it=findAnyItem(u); if(!it) return;
@@ -272,27 +514,21 @@ function churchUncurse(u){
   S.gold-=cost; uncurseItem(it);
   toast(dispName(it)+'の呪いが解けた。');
 }
-function churchUncurseSelf(){
-  const cost=churchCost();
-  if(S.gold<cost){ toast('所持金が足りません('+cost+'G必要)'); return; }
-  S.gold-=cost; S.statusCursed=false; S.atk+=2; S.def+=1;
-  toast('呪いが解けた。');
-}
 
 // ---- 商店メニュー ----
 function renderShopMenu(){
-  return topbar('商店')+statBlock()+`<div class="panel">
-    <button onclick="S.screen='shopBuy';render()">買う</button>
-    <button onclick="S.screen='shopSell';render()">売る</button>
-    <button onclick="S.screen='shopIdentify';render()">鑑定</button>
-    <button onclick="S.screen='shopRepair';render()">修理</button>
-    <button class="ghost" onclick="S.screen='town';render()">店を出る</button></div>`;
+  return hudBlock()+`<div class="panel">
+    <button onclick="gotoScreen('shopBuy','【商店 - 買う】品揃えを確認する。')">買う</button>
+    <button onclick="gotoScreen('shopSell','【商店 - 売る】不要な品を売却する。')">売る</button>
+    <button onclick="gotoScreen('shopIdentify','【商店 - 鑑定】確実にアイテムを鑑定する。')">鑑定</button>
+    <button onclick="gotoScreen('shopRepair','【商店 - 修理】すり減った装備を直す。')">修理</button>
+    <button class="ghost" onclick="gotoScreen('town','【町】に戻った。')">店を出る</button></div>`;
 }
 
 // ---- 買う ----
 function isInfinite(k){ const t=ITEMS[k].type; return DEFAULT_SHOP.includes(k) && t!=='weapon' && t!=='armor'; }
 function renderShopBuy(){
-  const keys = Array.from(new Set([...DEFAULT_SHOP, ...Object.keys(S.shop)])).filter(k=>ITEMS[k]);
+  const keys = Array.from(new Set([...DEFAULT_SHOP, ...Object.keys(S.shop)])).filter(k=>ITEMS[k] && k!=='junk');
   let rows = keys.map(k=>{
     const b=ITEMS[k], cat=S.shop[k], inf=isInfinite(k);
     if(!inf && !cat) return '';
@@ -303,10 +539,11 @@ function renderShopBuy(){
     const label = isEq ? `${b.name} Lv${lv}` : b.name;
     return `<button ${stock===0?'disabled':''} onclick="buyItem('${k}')">${label} <span class="tag">${price}G</span> <span class="tag">在庫${stock}</span></button>`;
   }).join('');
-  return topbar('商店 - 買う')+statBlock()+`<div class="panel">${rows||'<p class="sub">商品がありません</p>'}
-    <button class="ghost" onclick="S.screen='shopMenu';render()">戻る</button></div>`;
+  return hudBlock()+`<div class="panel">${rows||'<p class="sub">商品がありません</p>'}
+    <button class="ghost" onclick="gotoScreen('shopMenu','【商店】カウンターに戻った。')">戻る</button></div>`;
 }
 function buyItem(key){
+  if(key==='junk') return;
   const cat=S.shop[key], inf=isInfinite(key);
   if(!inf && (!cat||cat.stock<=0)){ toast('在庫切れです'); return; }
   const isEq=(ITEMS[key].type==='weapon'||ITEMS[key].type==='armor');
@@ -315,25 +552,25 @@ function buyItem(key){
   if(S.gold<price){ toast('所持金が足りません'); return; }
   if(S.backpack.length>=S.backpackLimit){ toast('バックパックが満杯です'); return; }
   S.gold-=price; if(!inf) cat.stock-=1;
-  const ni=genInstance(key, 1, true); // 店売り品は常に安全・鑑定済み
-  if(isEq) setLevel(ni,lv); // 売られた最高レベルで固定
+  const ni=genInstance(key, 1, true);
+  if(isEq) setLevel(ni,lv);
   S.backpack.push(ni);
-  render();
+  toast(dispName(ni)+'を購入した。');
 }
 
 // ---- 売る ----
 function renderShopSell(){
-  if(S.backpack.length===0) return topbar('商店 - 売る')+statBlock()+`<div class="panel"><p class="sub">売るものがありません</p><button class="ghost" onclick="S.screen='shopMenu';render()">戻る</button></div>`;
+  if(S.backpack.length===0) return hudBlock()+`<div class="panel"><p class="sub">売るものがありません</p><button class="ghost" onclick="gotoScreen('shopMenu','【商店】カウンターに戻った。')">戻る</button></div>`;
   const rows = S.backpack.map(it=>{
     const p = sellPrice(it);
     return `<button onclick="sellItem(${it.uid})">${dispName(it)} <span class="tag">${p}G</span></button>`;
   }).join('');
-  return topbar('商店 - 売る')+statBlock()+`<div class="panel">${rows}<button class="ghost" onclick="S.screen='shopMenu';render()">戻る</button></div>`;
+  return hudBlock()+`<div class="panel">${rows}<button class="ghost" onclick="gotoScreen('shopMenu','【商店】カウンターに戻った。')">戻る</button></div>`;
 }
 function sellPrice(it){
-  if(!it.identified) return 1; // 未鑑定は一律1G
+  if(it.junk || it.key==='junk') return 1;
+  if(!it.identified) return 1;
   const b=ITEMS[it.key];
-  if(it.junk) return 10;
   if(b.type!=='weapon'&&b.type!=='armor') return Math.max(1,Math.round(b.price*0.5));
   let p=Math.round(refPrice(it)*0.5);
   const ratio = it.durability/it.maxDurability;
@@ -343,45 +580,50 @@ function sellPrice(it){
 function sellItem(u){
   const idx=S.backpack.findIndex(i=>i.uid===u); if(idx<0)return;
   const it=S.backpack[idx]; const price=sellPrice(it);
+  const isJunkItem = (it.junk || it.key==='junk');
   S.gold+=price; S.backpack.splice(idx,1);
-  const cat=S.shop[it.key]||{level:1,stock:0};
-  const isEq=(ITEMS[it.key].type==='weapon'||ITEMS[it.key].type==='armor');
-  cat.level = isEq ? Math.max(cat.level||1, it.level||1) : 1; // 武器防具は売られた最高レベルで固定(未鑑定でも)
-  cat.stock+=1; // 売ったものは種類を問わず店に並ぶ
-  S.shop[it.key]=cat;
-  render();
+  if(!isJunkItem){
+    const cat=S.shop[it.key]||{level:1,stock:0};
+    const isEq=(ITEMS[it.key].type==='weapon'||ITEMS[it.key].type==='armor');
+    cat.level = isEq ? Math.max(cat.level||1, it.level||1) : 1;
+    cat.stock+=1;
+    S.shop[it.key]=cat;
+    toast(dispName(it)+'を'+price+'Gで売却した。');
+  } else {
+    toast('ガラクタを'+price+'Gで処分した（棚には並ばない）。');
+  }
 }
 function identifyCost(it){ return Math.max(1, Math.round(refPrice(it)*0.5)); }
 
-// ---- 鑑定 ----
+// ---- 鑑定（商店） ----
 function renderShopIdentify(){
-  const targets = S.backpack.filter(i=>!i.identified);
-  if(targets.length===0) return topbar('商店 - 鑑定')+statBlock()+`<div class="panel"><p class="sub">未鑑定のアイテムがありません</p><button class="ghost" onclick="S.screen='shopMenu';render()">戻る</button></div>`;
+  const targets = S.backpack.filter(i=>!i.identified && !i.junk && i.key!=='junk');
+  if(targets.length===0) return hudBlock()+`<div class="panel"><p class="sub">未鑑定のアイテムがありません</p><button class="ghost" onclick="gotoScreen('shopMenu','【商店】カウンターに戻った。')">戻る</button></div>`;
   const rows = targets.map(it=>{
     const cost = identifyCost(it);
     return `<button onclick="shopIdentify(${it.uid})">${dispName(it)} <span class="tag">${cost}G</span></button>`;
   }).join('');
-  return topbar('商店 - 鑑定')+statBlock()+`<div class="panel">${rows}<button class="ghost" onclick="S.screen='shopMenu';render()">戻る</button></div>`;
+  return hudBlock()+`<div class="panel">${rows}<button class="ghost" onclick="gotoScreen('shopMenu','【商店】カウンターに戻った。')">戻る</button></div>`;
 }
 function shopIdentify(u){
   const it=S.backpack.find(i=>i.uid===u); if(!it)return;
   const cost=identifyCost(it);
   if(S.gold<cost){toast('所持金が足りません');return;}
   S.gold-=cost; identifyItem(it);
-  if(it.cursed) toast(dispName(it)+'…呪われている！'); else render();
+  toast(dispName(it)+(it.cursed?'…呪われている！':'だと判明した。'));
 }
 
 // ---- 修理 ----
 function renderShopRepair(){
-  const targets = S.backpack.filter(i=>(ITEMS[i.key].type==='weapon'||ITEMS[i.key].type==='armor') && i.durability<i.maxDurability);
-  const eq = [S.equipment.weapon,S.equipment.armor].filter(i=>i && i.durability<i.maxDurability);
+  const targets = S.backpack.filter(i=>!i.junk && i.key!=='junk' && (ITEMS[i.key].type==='weapon'||ITEMS[i.key].type==='armor') && i.durability<i.maxDurability);
+  const eq = [S.equipment.weapon,S.equipment.armor].filter(i=>i && !i.junk && i.key!=='junk' && i.durability<i.maxDurability);
   const all=[...targets,...eq];
-  if(all.length===0) return topbar('商店 - 修理')+statBlock()+`<div class="panel"><p class="sub">修理が必要な装備がありません</p><button class="ghost" onclick="S.screen='shopMenu';render()">戻る</button></div>`;
+  if(all.length===0) return hudBlock()+`<div class="panel"><p class="sub">修理可能な装備がありません</p><button class="ghost" onclick="gotoScreen('shopMenu','【商店】カウンターに戻った。')">戻る</button></div>`;
   const rows = all.map(it=>{
     const cost = repairCost(it);
     return `<button onclick="repairItem(${it.uid})">${dispName(it)} 耐久${it.durability}/${it.maxDurability} <span class="tag">${cost}G</span>${durBar(it)}</button>`;
   }).join('');
-  return topbar('商店 - 修理')+statBlock()+`<div class="panel">${rows}<button class="ghost" onclick="S.screen='shopMenu';render()">戻る</button></div>`;
+  return hudBlock()+`<div class="panel">${rows}<button class="ghost" onclick="gotoScreen('shopMenu','【商店】カウンターに戻った。')">戻る</button></div>`;
 }
 function repairCost(it){
   const ratio=Math.max(0,Math.min(1,it.durability/it.maxDurability));
@@ -394,24 +636,26 @@ function findAnyItem(u){
   return null;
 }
 function repairItem(u){
-  const it=findAnyItem(u); if(!it)return;
+  const it=findAnyItem(u); if(!it || it.junk || it.key==='junk')return;
   const cost=repairCost(it);
   if(S.gold<cost){toast('所持金が足りません');return;}
-  S.gold-=cost; it.durability=it.maxDurability; it.junk=false; render();
+  S.gold-=cost; it.durability=it.maxDurability;
+  toast(dispName(it)+'を修理した。');
 }
 
 // ---- 宿 ----
 function renderInn(){
   const cost = 10 + S.maxDepthReached*3;
-  return topbar('宿')+statBlock()+`<div class="panel">
+  return hudBlock()+`<div class="panel">
     <button class="primary" onclick="rest(${cost})">休む(HP・エネルギー全回復) <span class="tag">${cost}G</span></button>
     <button onclick="stable()">馬小屋(エネルギーのみ回復) <span class="tag">無料</span></button>
     <button onclick="enterLounge()">ラウンジ(町の人の話)</button>
-    <button class="ghost" onclick="S.screen='town';render()">戻る</button></div>`;
+    <button class="ghost" onclick="gotoScreen('town','【町】に戻った。')">戻る</button></div>`;
 }
 function rest(cost){
   if(S.gold<cost){toast('所持金が足りません');return;}
-  S.gold-=cost; S.hp=S.maxHp; S.energy=S.maxEnergy; S.screen='town'; render();
+  S.gold-=cost; S.hp=S.maxHp; S.energy=S.maxEnergy;
+  gotoScreen('town','【町】ぐっすり眠り、HPとエネルギーが全回復した。');
 }
 function stable(){
   if(S.energy>=S.maxEnergy){ toast('エネルギーは満タンです。'); return; }
@@ -419,32 +663,32 @@ function stable(){
   toast('馬小屋の藁の上で休んだ。エネルギーが全回復した。');
 }
 
-// ---- ラウンジ(世界観を語る場所) ----
+// ---- ラウンジ ----
 const TALKS=[
- '老いた整備士:「外骨格は旧世界の遺産さ。着る者の力を何倍にもするが、使うほどすり減る。だから修理屋は儲かる。」',
- '酔った探索者:「深層に潜る理由？金だ。それ以外に何がある。誰も過去も理由も聞かん、それがこの街だ。」',
+ '老いた整備士:「外骨格は旧世界の遺産さ。着る者の力を何倍にもするが、耐久がゼロになると完全にガラクタになって直せん。」',
+ '酔った探索者:「深層12階に最深部の統括機がいるらしい。攻撃と防御がそれぞれ100以上ないと歯が立たんそうだ。」',
  '宿の主人:「倒れても回収業者が拾ってくれる。手数料は所持金の半分だが、命よりは安い。誰が作った仕組みかは知らんがね。」',
- '学者風の女:「ダンジョンは旧世界の都市の残骸、その下層だ。深く潜るほど、まだ動く機械が生き残っている。」',
- '修道女:「呪いと呼ばれているのはバグ。古い外骨格の制御コードが壊れているの。教会ではそれを書き直しているのよ。」',
- '行商人:「拾った物はスキャンするまで正体不明さ。鑑定スキャナーは安くないが、呪い持ちを着込むよりはマシだろう？」',
+ '学者風の女:「ダンジョンは旧世界の都市の残骸、その下層だ。最深部は12階、それより下へ続く階段は存在しない。」',
+ '修道女:「呪いと呼ばれているのはバグ。古い外骨格や武器の制御コードが壊れているの。教会ではそれを書き直しているのよ。」',
+ '行商人:「正体不明の液状カプセルは『謎の液体』、小型機器は『謎の端末』と呼ばれる。鑑定に失敗するとガラクタになるぞ。」',
  '少年:「錆びたドローンは弱そうに見えるけど、壊れても勝手に動き続けるんだ。油断しちゃだめだよ。」',
  '年寄り:「エネルギーってのは外骨格を動かす電池みたいなもんだ。尽きたら一歩も動けん。帰り道の分も残しておけよ。」',
  '宿の主人:「馬小屋に充電ケーブルを引いてある。藁の上で寝たい客用さ。体力は戻らんが、電池は満タンになる。」',
  '鍵屋:「宝箱の鍵は旧世界の防犯装置だ。技能が低いと痛い目を見る。種を飲んで技能を鍛えるのも手だな。」',
- '薬師:「たまに『種』が落ちている。旧世界の強化剤を植物に仕込んだものらしい。飲めば体が少しだけ強くなる。」',
- '商店の常連:「あの店は売ったものを何でも仕入れる。拾い物を売れば棚が増える。一番良い品の値段が基準になるのさ。」',
- '傭兵:「深層ガーディアンを見たことがあるか。あれは元々、門番だったらしい。何を守っているのかは誰も知らん。」',
- '老いた整備士:「武器も防具も、掘り出した時のレベルがすべてだ。深くで拾った物ほど高く売れる。」',
+ '薬師:「たまに『謎の端末』が落ちている。中身が『種』なら、使えば体が少しだけ強くなるらしい。」',
+ '商店の常連:「あの店は売ったものを何でも仕入れる。ただしガラクタだけは1Gで引き取られて棚にも並ばない。」',
+ '傭兵:「深層ガーディアンを見たことがあるか。あれは元々、門番だったらしい。最深部のボスを守っているのかもな。」',
+ '老いた整備士:「武器も防具も、壊れる前に修理屋へ持ってこい。一度ガラクタになったらもう二度と元には戻らん。」',
 ];
 let lastTalk=-1;
-function enterLounge(){ toastMsg=''; S.screen='lounge'; render(); }
-function leaveLounge(){ toastMsg=''; S.screen='inn'; render(); }
+function enterLounge(){ gotoScreen('lounge','【宿のラウンジ】常連たちが思い思いに話している。'); }
+function leaveLounge(){ gotoScreen('inn','【宿】ロビーに戻った。'); }
 function talk(){
   let i; do{ i=Math.floor(Math.random()*TALKS.length); }while(i===lastTalk && TALKS.length>1);
   lastTalk=i; toastMsg=TALKS[i]; render();
 }
 function renderLounge(){
-  return topbar('ラウンジ')+statBlock()+`<div class="panel">
+  return hudBlock()+`<div class="panel">
     <p class="sub">宿のラウンジ。常連たちが思い思いに話している。</p>
     <button class="primary" onclick="talk()">話を聞く</button>
     <button class="ghost" onclick="leaveLounge()">戻る</button></div>`;
@@ -453,7 +697,9 @@ function renderLounge(){
 // ---- 装備 ----
 function equip(u){
   const idx=S.backpack.findIndex(i=>i.uid===u); if(idx<0)return;
-  const it=S.backpack[idx]; const slot=ITEMS[it.key].type;
+  const it=S.backpack[idx];
+  if(it.junk || it.key==='junk'){ toast('ガラクタは装備できません'); return; }
+  const slot=ITEMS[it.key].type;
   const prev=S.equipment[slot];
   if(prev&&prev.locked){ toast('いま装備している物が呪いで外せません'); return; }
   S.backpack.splice(idx,1);
@@ -462,7 +708,9 @@ function equip(u){
   if(it.cursed && !it.locked){
     it.identified=true; it.cursedRevealed=true; it.locked=true;
     if(slot==='weapon') S.atk-=2; else S.def-=1;
-    toast('呪われていた！ '+dispName(it)+' が外せなくなった('+(slot==='weapon'?'ATK -2':'DEF -1')+')');
+    toast('呪われていた！ '+dispName(it)+' が外せなくなった('+(slot==='weapon'?'ATC -2':'DEF -1')+')');
+  } else {
+    toast(dispName(it)+'を装備した。');
   }
   afterEquipChange();
 }
@@ -474,28 +722,36 @@ function unequip(slot){
   const it=S.equipment[slot]; if(!it)return;
   if(it.locked){ toast('呪いで外せません'); return; }
   if(S.backpack.length>=S.backpackLimit){ toast('バックパックが満杯です'); return; }
-  S.equipment[slot]=null; S.backpack.push(it); afterEquipChange();
+  S.equipment[slot]=null; S.backpack.push(it);
+  toast(dispName(it)+'を外した。');
+  afterEquipChange();
 }
 
 // ===================== ダンジョン =====================
 function renderDungeonSetup(){
-  const maxD=Math.min(S.maxDepthReached, 12);
+  const maxD=Math.min(S.maxDepthReached, MAX_DEPTH);
   let opts='';
-  for(let d=1; d<=maxD; d++) opts+=`<button ${S.energy>d?'':'disabled'} onclick="startDungeon(${d})">深層${d}から潜る <span class="tag">エネルギー${d}</span></button>`;
-  return topbar('ダンジョン')+statBlock()+`<div class="panel">
-    <p class="sub">エネルギーが尽きる、または戦闘に負けると、その場で倒れて回収業者に運ばれます(所持金が半分になり、HP・エネルギーは全回復します)。</p>
-    <p class="sub">エネルギー ${S.energy}/${S.maxEnergy}。潜る階層と同じ量のエネルギーを消費します。</p>
+  for(let d=1; d<=maxD; d++){
+    const bossTag = (d===MAX_DEPTH) ? ' <span class="tag">最深部</span>' : '';
+    opts+=`<button ${S.energy>d?'':'disabled'} onclick="startDungeon(${d})">深層${d}から潜る${bossTag} <span class="tag">エネルギー${d}</span></button>`;
+  }
+  return hudBlock()+`<div class="panel">
+    <p class="sub">エネルギーが尽きる、または戦闘に負けると回収業者に運ばれます(所持金が半分になり、HP・エネルギーは全回復)。</p>
+    <p class="sub">潜る階層と同じ量のエネルギーを消費します（最深部：深層${MAX_DEPTH}）。</p>
     ${opts}
-    <button class="ghost" onclick="S.screen='town';render()">戻る</button></div>`;
+    <button class="ghost" onclick="gotoScreen('town','【町】に戻った。')">戻る</button></div>`;
 }
 function startDungeon(depth){
   if(S.energy<=depth){ toast('エネルギーが足りません'); return; }
   S.energy-=depth;
-  S.run={depth, turns:0, encounter:null, log:['深層'+depth+'に突入した。']};
+  const msg = (depth===MAX_DEPTH)
+    ? `【最深部 深層${depth}】重苦しい空気の中、深淵の統括機が待ち構えている気配がする…`
+    : `【ダンジョン 深層${depth}】に突入した。`;
+  S.run={depth, turns:0, encounter:null, bossDefeated:false, log:[msg]};
   S.screen='dungeon'; render();
 }
 function pushLog(msg){
-  if(msgFresh){ S.run.log=[]; msgFresh=false; } // 操作ごとにメッセージを書き直す
+  if(msgFresh){ S.run.log=[]; msgFresh=false; }
   S.run.log.push(msg); if(S.run.log.length>6) S.run.log.shift();
 }
 
@@ -505,14 +761,8 @@ function renderDungeon(){
   if(r.encounter) enc = renderEncounter();
   else enc = `<button class="primary" onclick="doSearch()">周囲を探す <span class="tag">エネルギー1</span></button>
     <button onclick="doReturn()">帰還する <span class="tag">エネルギー${returnCost()}</span></button>`;
-  return topbar('ダンジョン 深層'+r.depth)+statBlock()+
-    `<div class="panel"><div class="row"><span>探索回数 ${r.turns}</span><span>帰還コスト ${returnCost()}</span></div></div>
-     <div class="panel">${enc}<button class="ghost" onclick="openItems('dungeon')">持ち物</button></div>`;
-}
-function itemDetail(it){
-  const t=ITEMS[it.key].type;
-  if((t==='weapon'||t==='armor') && it.identified) return ` <span class="tag">耐久${it.durability}/${it.maxDurability}</span>`;
-  return '';
+  return hudBlock()+
+     `<div class="panel">${enc}<button class="ghost" onclick="openItems('dungeon')">持ち物</button></div>`;
 }
 function returnCost(){ return S.run.depth + Math.floor(S.run.turns/5); }
 
@@ -520,8 +770,29 @@ function doSearch(){
   const cost=1;
   S.energy-=cost; S.run.turns++;
   if(S.energy<=0){ pushLog('エネルギーが尽きて倒れた…'); collapse(); return; }
+
+  const isBottom = (S.run.depth >= MAX_DEPTH);
   const r=Math.random();
-  if(r<0.35){ pushLog('何も見つからなかった。'); S.run.encounter=null; }
+
+  if(isBottom){
+    if(!S.run.bossDefeated && (S.run.turns >= 2 && r < 0.45)){
+      const boss = Object.assign({}, FINAL_BOSS);
+      S.run.encounter={type:'enemy', mon:boss};
+      pushLog('最深部の奥で【'+boss.name+'】が起動した！！');
+      render(); return;
+    }
+    if(r<0.38){ pushLog('【最深部 深層'+S.run.depth+'】何も見つからなかった。'); S.run.encounter=null; }
+    else if(r<0.60){ const it=genInstance(pickRandomDropKey(),S.run.depth); S.run.encounter={type:'item', item:it}; pushLog(dispName(it)+'が落ちている。'); }
+    else if(r<0.76){ S.run.encounter={type:'trap'}; pushLog('宝箱を見つけた。罠があるかもしれない。'); }
+    else {
+      const mon = (!S.run.bossDefeated && Math.random()<0.5) ? Object.assign({}, FINAL_BOSS) : spawnMonster(S.run.depth);
+      S.run.encounter={type:'enemy', mon};
+      pushLog(mon.name+'が現れた！');
+    }
+    render(); return;
+  }
+
+  if(r<0.35){ pushLog('【深層'+S.run.depth+'】何も見つからなかった。'); S.run.encounter=null; }
   else if(r<0.55){ const it=genInstance(pickRandomDropKey(),S.run.depth); S.run.encounter={type:'item', item:it}; pushLog(dispName(it)+'が落ちている。'); }
   else if(r<0.70){ S.run.encounter={type:'trap'}; pushLog('宝箱を見つけた。罠があるかもしれない。'); }
   else if(r<0.90){ const mon=spawnMonster(S.run.depth); S.run.encounter={type:'enemy', mon}; pushLog(mon.name+'が現れた！'); }
@@ -530,19 +801,24 @@ function doSearch(){
 }
 function pickRandomDropKey(){
   if(Math.random()<0.12){ const seeds=['hpSeed','enSeed','skillSeed']; return seeds[Math.floor(Math.random()*seeds.length)]; }
-  const pool=['club','dagger','sword','robe','exo','capsule','idScroll','curseFix','energyPotion'];
+  const pool=['club','dagger','sword','robe','exo','healPotion','capsule','idScroll','curseFix','energyPotion'];
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function spawnMonster(depth){
   const cands=MONSTERS.filter(m=>depth>=m.min&&depth<=m.max);
   const base=cands[Math.floor(Math.random()*cands.length)]||MONSTERS[0];
-  return {name:base.name, hp:base.hp+depth*2, maxHp:base.hp+depth*2, atk:base.atk+Math.floor(depth/2),
-          undead:base.undead, goldMin:base.gold[0], goldMax:base.gold[1]};
+  return {
+    name:base.name,
+    hp:base.hp+depth*2, maxHp:base.hp+depth*2,
+    atk:base.atk+Math.floor(depth/2),
+    def:base.def||0,
+    undead:base.undead, goldMin:base.gold[0], goldMax:base.gold[1]
+  };
 }
 function renderEncounter(){
   const e=S.run.encounter;
   if(e.type==='item'){
-    return `<button class="primary" onclick="takeItem()">拾う</button>
+    return `<button class="primary" onclick="takeItem()">拾う（${dispName(e.item)}）</button>
       <button class="ghost" onclick="leaveEncounter()">放っておく</button>`;
   }
   if(e.type==='trap'){
@@ -553,46 +829,59 @@ function renderEncounter(){
     return `<button class="danger" onclick="enterCombat()">戦闘開始</button>
       <button class="ghost" onclick="fleeBeforeCombat()">戦わずに離れる</button>`;
   }
-  if(e.type==='stairs'){
+  if(e.type==='stairs' && S.run.depth < MAX_DEPTH){
     const cost=S.run.depth+1;
     return `<button class="primary" onclick="descend(${cost})">降りる <span class="tag">エネルギー${cost}</span></button>
       <button class="ghost" onclick="leaveEncounter()">このまま探索を続ける</button>`;
   }
   return '';
 }
-function leaveEncounter(){ S.run.encounter=null; render(); }
+function leaveEncounter(){ S.run.encounter=null; pushLog('【ダンジョン 深層'+S.run.depth+'】探索を続ける。'); render(); }
 function takeItem(){
-  if(S.backpack.length>=S.backpackLimit){ toast('バックパックが満杯です'); return; }
-  S.backpack.push(S.run.encounter.item); pushLog(dispName(S.run.encounter.item)+' を手に入れた。');
-  S.run.encounter=null; render();
+  if(S.backpack.length>=S.backpackLimit){
+    toast('バックパックが満杯です。持ち物を整理してください。');
+    return;
+  }
+  const it = S.run.encounter.item;
+  S.backpack.push(it);
+  pushLog(dispName(it)+' を手に入れた。');
+  S.run.encounter=null;
+  render();
 }
 function openChest(){
   const chance=Math.max(0.1,Math.min(0.9, 0.5+S.skill*0.04-S.run.depth*0.03));
   if(Math.random()<chance){
     const it=genInstance(pickRandomDropKey(),S.run.depth);
-    if(S.backpack.length<S.backpackLimit){ S.backpack.push(it); pushLog('解除成功。'+dispName(it)+' を手に入れた。'); }
-    else pushLog('解除成功したが、バックパックが満杯で取れなかった。');
+    if(S.backpack.length<S.backpackLimit){
+      S.backpack.push(it);
+      pushLog('解除成功。'+dispName(it)+' を手に入れた。');
+      S.run.encounter=null;
+    } else {
+      S.run.encounter={type:'item', item:it, fromChest:true};
+      pushLog('解除成功！ '+dispName(it)+' を見つけたがバックパックが満杯だ。');
+    }
   } else {
-    const kinds=['hp','energy']; if(!S.statusCursed) kinds.push('curse');
-    const k=kinds[Math.floor(Math.random()*kinds.length)];
+    const k = Math.random()<0.5 ? 'hp' : 'energy';
     if(k==='hp'){
       const d=Math.max(0,Math.min(S.hp-1, 3+S.run.depth*2)); S.hp-=d;
       pushLog('罠にかかった！ HPが'+d+'減った。');
-    } else if(k==='energy'){
+    } else {
       const d=Math.max(0,Math.min(S.energy-1, 2+Math.floor(S.run.depth/2))); S.energy-=d;
       pushLog('罠にかかった！ エネルギーが'+d+'減った。');
-    } else {
-      S.statusCursed=true; S.atk=Math.max(1,S.atk-2); S.def=Math.max(0,S.def-1);
-      pushLog('罠にかかった！ 呪いを受け、ATK -2・DEF -1。');
     }
+    S.run.encounter=null;
   }
-  S.run.encounter=null; render();
+  render();
 }
 function descend(cost){
+  if(S.run.depth >= MAX_DEPTH){ toast('ここが最深部だ。これ以上は降りられない。'); S.run.encounter=null; render(); return; }
   if(S.energy<cost){ toast('エネルギーが足りません'); return; }
   S.energy-=cost; S.run.depth+=1; S.run.turns=0;
   S.maxDepthReached=Math.max(S.maxDepthReached, S.run.depth);
-  pushLog('深層'+S.run.depth+'へ降りた。');
+  const msg = (S.run.depth===MAX_DEPTH)
+    ? `【最深部 深層${S.run.depth}】へ降りた。ここがダンジョンの最奥だ！`
+    : `【ダンジョン 深層${S.run.depth}】へ降りた。`;
+  pushLog(msg);
   S.run.encounter=null; render();
 }
 function fleeBeforeCombat(){ pushLog('戦わずにその場を離れた。'); S.run.encounter=null; render(); }
@@ -601,41 +890,45 @@ function doReturn(){
   if(S.energy<cost){ toast('エネルギーが足りません(帰還には'+cost+'必要)'); return; }
   S.energy-=cost;
   S.maxDepthReached=Math.max(S.maxDepthReached,S.run.depth);
-  S.run=null; S.screen='town'; render();
+  S.run=null;
+  gotoScreen('town','【町】ダンジョンから無事に帰還した。');
 }
 function collapse(){
   const lost = Math.ceil(S.gold/2);
   S.gold -= lost;
   S.hp=S.maxHp; S.energy=S.maxEnergy;
   if(S.run) S.maxDepthReached=Math.max(S.maxDepthReached, S.run.depth);
-  S.statusCursed=false; S.combat=null;
-  S.run=null; S.screen='town'; render();
-  toast('回収業者に連れ戻された。所持金が半分になった(-'+lost+'G)。HP・エネルギーは全回復。');
+  S.combat=null;
+  S.run=null; S.screen='town';
+  toastMsg='【町】回収業者に連れ戻された。所持金が半分になった(-'+lost+'G)。';
+  render();
 }
 
 // ===================== 戦闘 =====================
 function enterCombat(){
   S.combat={mon:S.run.encounter.mon, fled:false};
-  S.run.encounter=null; S.screen='combat'; render();
+  S.run.encounter=null; S.screen='combat';
+  pushLog('【戦闘】'+S.combat.mon.name+'との戦闘！');
+  render();
 }
 function weaponPower(){
   const w=S.equipment.weapon;
-  if(!w||w.junk) return 0; // 素手
+  if(!w||w.junk||w.key==='junk') return 0;
   return ITEMS[w.key].power * w.level;
 }
 function armorPower(){
   const a=S.equipment.armor;
-  if(!a||a.junk) return 0;
+  if(!a||a.junk||a.key==='junk') return 0;
   return Math.round(ITEMS[a.key].power*(1+((a.level||1)-1)*0.5));
 }
 function atkTotal(){ return S.atk + weaponPower(); }
 function defTotal(){ return S.def + armorPower(); }
 function renderCombat(){
   const m=S.combat.mon;
-  return topbar('戦闘')+`<div class="panel" id="enemyBox">
-    <div class="row"><span>${m.name}</span><span>HP ${m.hp}/${m.maxHp}${m.undead?' <span class="tag">アンデッド</span>':''}</span></div>
+  return `<div class="panel" id="enemyBox">
+    <div class="row"><span>${m.name}</span><span>HP ${m.hp}/${m.maxHp}${m.undead?' <span class="tag">アンデッド</span>':''}${m.isBoss?' <span class="tag">BOSS</span>':''}</span></div>
     <div class="statbar"><div class="hpfill" style="width:${Math.max(0,Math.round(m.hp/m.maxHp*100))}%"></div></div>
-  </div>${statBlock()}
+  </div>${hudBlock()}
   <div class="panel">
     <button class="danger" onclick="combatAttack()">攻撃</button>
     <button onclick="openItems('combat')">アイテム</button>
@@ -649,6 +942,22 @@ function shake(id){
   el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
 }
 function pushLogSafe(msg){ if(S.run) pushLog(msg); }
+
+function handleMonsterDefeat(m){
+  const gold = m.goldMin + Math.floor(Math.random()*(m.goldMax-m.goldMin+1));
+  S.gold += gold;
+  if(m.isBoss){
+    if(S.run) S.run.bossDefeated = true;
+    S.gameCleared = true;
+    pushLogSafe(`【完全制覇】${m.name}を撃破した！ +${gold}G`);
+  } else {
+    pushLogSafe(`${m.name}を倒した！ +${gold}G`);
+  }
+  S.combat = null;
+  S.screen = 'dungeon';
+  render();
+}
+
 async function enemyAct(){
   const m=S.combat.mon;
   if(m.hp<=0) return true;
@@ -656,10 +965,15 @@ async function enemyAct(){
   S.hp=Math.max(0,S.hp-dmg);
   pushLogSafe(m.name+'から'+dmg+'ダメージを受けた。');
   const ar=S.equipment.armor;
-  if(ar && !ar.junk){
+  if(ar && !ar.junk && ar.key!=='junk'){
     const nm=dispName(ar);
     ar.durability=Math.max(0,ar.durability-1);
-    if(ar.durability===0){ ar.junk=true; pushLogSafe(nm+'が壊れた。'); }
+    if(ar.durability===0){
+      convertToJunk(ar);
+      S.equipment.armor = null;
+      if(S.backpack.length < S.backpackLimit) S.backpack.push(ar);
+      pushLogSafe(nm+'が壊れて「ガラクタ」になった！');
+    }
   }
   render(); shake('playerBox'); await sleep(600);
   if(S.hp<=0){ pushLogSafe('やられた…'); S.screen='dungeon'; collapse(); return false; }
@@ -669,20 +983,25 @@ async function combatAttack(){
   if(busy||!S.combat) return; busy=true;
   try{
     const m=S.combat.mon;
-    const dmg=Math.max(1, atkTotal() - Math.floor(Math.random()*3));
+    const rawDmg = atkTotal() - (m.def || 0) - Math.floor(Math.random()*3);
+    const dmg = Math.max(1, rawDmg);
     m.hp-=dmg;
     const w=S.equipment.weapon;
     pushLogSafe(m.name+'に'+dmg+'ダメージ。');
-    if(w && !w.junk){
+    if(w && !w.junk && w.key!=='junk'){
       const nm=dispName(w);
       w.durability=Math.max(0,w.durability-1);
-      if(w.durability===0){ w.junk=true; pushLogSafe(nm+'が壊れた。'); }
+      if(w.durability===0){
+        convertToJunk(w);
+        S.equipment.weapon = null;
+        if(S.backpack.length < S.backpackLimit) S.backpack.push(w);
+        pushLogSafe(nm+'が壊れて「ガラクタ」になった！');
+      }
     }
     render(); shake('enemyBox'); await sleep(600);
     if(m.hp<=0){
-      const gold = m.goldMin + Math.floor(Math.random()*(m.goldMax-m.goldMin+1));
-      S.gold+=gold; pushLogSafe(m.name+'を倒した！ +'+gold+'G');
-      S.combat=null; S.screen='dungeon'; render(); return;
+      handleMonsterDefeat(m);
+      return;
     }
     if(await enemyAct()) render();
   } finally { busy=false; }
@@ -690,7 +1009,8 @@ async function combatAttack(){
 async function combatFlee(){
   if(busy||!S.combat) return; busy=true;
   try{
-    if(Math.random()<0.7){ pushLogSafe('うまく逃げ切った。'); S.combat=null; S.screen='dungeon'; render(); return; }
+    const fleeChance = S.combat.mon.isBoss ? 0.35 : 0.7;
+    if(Math.random()<fleeChance){ pushLogSafe('うまく逃げ切った。'); S.combat=null; S.screen='dungeon'; render(); return; }
     toast('逃げられなかった！');
     await sleep(400);
     if(await enemyAct()) render();
@@ -698,8 +1018,28 @@ async function combatFlee(){
 }
 
 // ===================== アイテム画面(町・ダンジョン・戦闘共通) =====================
-function openItems(ctx){ if(busy) return; S.itemCtx=ctx; S.itemSel=null; S.itemMode=null; S.screen='items'; render(); }
-function closeItems(){ S.itemSel=null; S.itemMode=null; S.screen=S.itemCtx||'town'; render(); }
+function openItems(ctx){
+  if(busy) return;
+  S.itemCtx=ctx; S.itemSel=null; S.itemMode=null; S.screen='items';
+  if(S.run) pushLog('【持ち物】バックパックを確認する。');
+  else toastMsg='【持ち物】バックパックを確認する。';
+  render();
+}
+function closeItems(){
+  S.itemSel=null; S.itemMode=null;
+  const next = S.itemCtx||'town';
+  if(next==='town') gotoScreen('town','【町】に戻った。');
+  else if(next==='dungeon'){
+    S.screen='dungeon';
+    if(S.run && S.run.encounter && S.run.encounter.type==='item'){
+      pushLog('【ダンジョン 深層'+S.run.depth+'】足元に '+dispName(S.run.encounter.item)+' が落ちている。');
+    } else {
+      pushLog('【ダンジョン 深層'+S.run.depth+'】探索画面に戻った。');
+    }
+    render();
+  }
+  else { S.screen=next; render(); }
+}
 function selectItem(u){ S.itemSel=(S.itemSel===u)?null:u; render(); }
 function note(msg){ toast(msg); }
 function isEquipped(it){
@@ -710,22 +1050,37 @@ function unequipItem(u){
   const w=S.equipment.weapon, a=S.equipment.armor;
   if(w&&w.uid===u) unequip('weapon'); else if(a&&a.uid===u) unequip('armor');
 }
+function discardItem(u){
+  const idx=S.backpack.findIndex(i=>i.uid===u); if(idx<0) return;
+  const it=S.backpack[idx];
+  const nm=dispName(it);
+  S.backpack.splice(idx,1);
+  S.itemSel=null;
+  note(nm+'を捨てた。');
+}
 function actionPanel(it){
+  const isJunkItem = (it.junk || it.key==='junk');
   const t=ITEMS[it.key].type, eq=isEquipped(it), inCombat=S.itemCtx==='combat';
-  const canUse=!eq&&(t==='potion'||t==='tool'||t==='seed');
-  const canEquip=(t==='weapon'||t==='armor');
-  const st='style="text-align:center;margin:0"';
+  const canUse=!eq&&!isJunkItem&&(t==='potion'||t==='tool'||t==='seed');
+  const canEquip=!isJunkItem&&(t==='weapon'||t==='armor');
+  const canAppraise=!eq&&!it.identified&&!isJunkItem;
+  const st='style="text-align:center;margin:0;padding:8px 2px;font-size:.84rem"';
+  let cols = 4 + (inCombat ? 1 : 0);
   let btns=`<button ${st} ${canUse?'':'disabled'} onclick="useOnSelf(${it.uid})">使う</button>`;
+  btns+=`<button ${st} ${canAppraise?'':'disabled'} onclick="appraiseItem(${it.uid})">鑑定</button>`;
   if(inCombat) btns+=`<button ${st} ${eq?'disabled':''} onclick="throwAtEnemy(${it.uid})">投げる</button>`;
-  btns+=`<button ${st} ${canEquip?'':'disabled'} onclick="${eq?`unequipItem(${it.uid})`:`equip(${it.uid})`}">${eq?'外す':'装備'}</button>`;
-  return `<div style="display:grid;grid-template-columns:repeat(${inCombat?3:2},1fr);gap:6px;margin:0 0 8px">${btns}</div>`;
+  btns+=`<button ${st} ${canEquip||eq?'':'disabled'} onclick="${eq?`unequipItem(${it.uid})`:`equip(${it.uid})`}">${eq?'外す':'装備'}</button>`;
+  btns+=`<button ${st} ${eq?'disabled':''} onclick="discardItem(${it.uid})">捨てる</button>`;
+  return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:5px;margin:0 0 8px">${btns}</div>`;
 }
 function itemDetail(it){
+  if(it.junk || it.key==='junk') return '';
   const t=ITEMS[it.key].type;
   if((t==='weapon'||t==='armor') && it.identified) return ` <span class="tag">耐久${it.durability}/${it.maxDurability}</span>`;
   return '';
 }
 function targetOk(it){
+  if(it.junk || it.key==='junk') return false;
   const m=S.itemMode; if(!m) return true;
   if(it.uid===m.src) return false;
   if(m.kind==='identify') return !it.identified || (it.cursed && !it.cursedRevealed);
@@ -747,6 +1102,23 @@ function applyTool(tu){
   }
   S.backpack.splice(idx,1); S.itemMode=null; itemDone();
 }
+
+// 技能値による自力鑑定コマンド（失敗すると完全に「ガラクタ」になる）
+function appraiseItem(u){
+  const idx=S.backpack.findIndex(i=>i.uid===u); if(idx<0) return;
+  const it=S.backpack[idx];
+  if(it.identified || it.junk || it.key==='junk') return;
+  const chance = Math.max(0.25, Math.min(0.95, 0.35 + S.skill * 0.05));
+  if(Math.random() < chance){
+    identifyItem(it);
+    note('鑑定成功！ '+dispName(it)+(it.cursed?'…呪われている！':'だと判明した。'));
+  } else {
+    convertToJunk(it);
+    note('鑑定に失敗した…解析ミスで完全に「ガラクタ」になってしまった！');
+  }
+  itemDone();
+}
+
 function renderItems(){
   const w=S.equipment.weapon, a=S.equipment.armor, mode=S.itemMode;
   const row=(it,label)=>{
@@ -763,7 +1135,7 @@ function renderItems(){
     const m=S.combat.mon;
     enemy=`<div class="panel"><div class="row"><span>${m.name}</span><span>HP ${m.hp}/${m.maxHp}${m.undead?' <span class="tag">アンデッド</span>':''}</span></div></div>`;
   }
-  return topbar('持ち物')+modeHtml+enemy+statBlock()+`<div class="panel"><div class="sub">装備中</div>${eqHtml}</div>
+  return enemy+hudBlock()+modeHtml+`<div class="panel"><div class="sub">装備中</div>${eqHtml}</div>
    <div class="panel"><div class="sub">バックパック ${S.backpack.length}/${S.backpackLimit}</div>${list||'<p class="sub">何も持っていません</p>'}
    <button class="ghost" onclick="closeItems()">戻る</button></div>`;
 }
@@ -775,22 +1147,28 @@ function itemDone(){
 function useOnSelf(u){
   const idx=S.backpack.findIndex(i=>i.uid===u); if(idx<0)return;
   const it=S.backpack[idx]; const b=ITEMS[it.key];
+  if(it.junk || it.key==='junk'){ note('ガラクタは使えない。'); return; }
   if(b.type==='potion'){
     it.identified=true;
     if(it.effect==='heal'){ const heal=Math.min(S.maxHp-S.hp,15); S.hp+=heal; note(heal+'回復した。'); }
     else if(it.effect==='energy'){ const g=Math.min(S.maxEnergy-S.energy,10); S.energy+=g; note('エネルギーが'+g+'回復した。'); }
     else if(it.effect==='cureCurse'){
-      if(S.statusCursed){ S.statusCursed=false; S.atk+=2; S.def+=1; note('呪いが解けた。'); }
-      else note('特に変化はなかった。');
-    } else { S.statusCursed=true; S.atk=Math.max(1,S.atk-2); S.def=Math.max(0,S.def-1); note('呪いの薬だった！ ATK -2・DEF -1'); }
+      const cw = (S.equipment.weapon && S.equipment.weapon.cursed) ? S.equipment.weapon : null;
+      const ca = (S.equipment.armor && S.equipment.armor.cursed) ? S.equipment.armor : null;
+      const target = cw || ca;
+      if(target){ uncurseItem(target); note(dispName(target)+'の呪いが解けた。'); }
+      else note('呪われている装備はない。');
+    }
     S.backpack.splice(idx,1);
   } else if(b.type==='seed'){
+    it.identified=true;
     const n=1+Math.floor(Math.random()*3);
     if(b.effect==='seedHp'){ S.maxHp+=n; S.hp+=n; note(b.name+'を使った！ 最大HPが'+n+'上がった。'); }
     else if(b.effect==='seedEn'){ S.maxEnergy+=n; S.energy+=n; note(b.name+'を使った！ 最大エネルギーが'+n+'上がった。'); }
     else { S.skill+=n; note(b.name+'を使った！ 技能が'+n+'上がった。'); }
     S.backpack.splice(idx,1);
   } else if(b.effect==='identify'||b.effect==='removeCurse'){
+    it.identified=true;
     S.itemMode={kind:b.effect,src:u};
     if(![...S.backpack,S.equipment.weapon,S.equipment.armor].filter(Boolean).some(targetOk)){
       S.itemMode=null; note(b.effect==='identify'?'鑑定する対象がない。':'対象にできる装備がない。'); return;
@@ -803,34 +1181,34 @@ async function throwAtEnemy(u){
   if(busy||!S.combat) return;
   const idx=S.backpack.findIndex(i=>i.uid===u); if(idx<0)return;
   const it=S.backpack[idx]; const b=ITEMS[it.key]; const m=S.combat.mon;
+  const isJunkItem = (it.junk || it.key==='junk');
   it.identified=true; S.backpack.splice(idx,1);
   const nm=dispName(it);
   let hit=false;
-  if(b.type==='weapon'||b.type==='armor'){
-    const dmg=Math.round((b.power||2)*(it.level||1)*1.2);
+  if(!isJunkItem && (b.type==='weapon'||b.type==='armor')){
+    const dmg=Math.max(1, Math.round((b.power||2)*(it.level||1)*1.2) - Math.floor((m.def||0)*0.5));
     m.hp-=dmg; hit=true; pushLogSafe(nm+'を投げつけた！ '+dmg+'ダメージ。');
-  } else if(b.type==='potion'){
+  } else if(!isJunkItem && b.type==='potion'){
     if(it.effect==='heal'){
       if(m.undead){ m.hp-=15; hit=true; pushLogSafe(nm+'を浴びせた！ アンデッドに15ダメージ。'); }
       else { const g=Math.min(m.maxHp-m.hp,15); m.hp+=g; pushLogSafe(nm+'を投げつけた…敵が'+g+'回復してしまった。'); }
-    } else if(it.effect==='curse'){
-      const dmg=m.undead?2:8; m.hp-=dmg; hit=true; pushLogSafe(nm+'を投げつけた！ '+dmg+'ダメージ。');
     } else pushLogSafe(nm+'を投げつけたが、効果はなかった。');
-  } else pushLogSafe(nm+'を投げつけたが、効果はなかった。');
+  } else {
+    pushLogSafe(nm+'を投げつけたが、効果はなかった。');
+  }
   S.itemSel=null; S.screen='combat'; busy=true;
   try{
     render(); if(hit) shake('enemyBox');
     await sleep(hit?600:350);
     if(m.hp<=0){
-      const gold=m.goldMin+Math.floor(Math.random()*(m.goldMax-m.goldMin+1));
-      S.gold+=gold; pushLogSafe(m.name+'を倒した！ +'+gold+'G');
-      S.combat=null; S.screen='dungeon'; render(); return;
+      handleMonsterDefeat(m);
+      return;
     }
     if(await enemyAct()) render();
   } finally { busy=false; }
 }
 
-function renderGameover(){ return topbar('終了')+'<div class="panel">—</div>'; }
+function renderGameover(){ return hudBlock()+'<div class="panel">—</div>'; }
 
 render();
 </script>
