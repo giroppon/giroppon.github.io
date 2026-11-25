@@ -21,6 +21,7 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;overflow:hidden;touch-action:manipulation;-webkit-text-size-adjust:100%;background:#000;color:var(--text);font-family:"Courier New",ui-monospace,monospace;line-height:1.45;overscroll-behavior-y:none}
+body{position:fixed;inset:0;width:100%}
 /* iPhone上部のぼかし・グラデーション防止用：セーフエリアを純黒でパキッと覆う */
 body::before{
   content:"";position:fixed;top:0;left:0;right:0;height:var(--safe-top);
@@ -31,8 +32,9 @@ body::before{
   display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:none;
   padding:var(--safe-top) 12px 0;
 }
-#app.split{overflow:hidden}
-.fixed-top{flex:none}
+#app.split{overflow:hidden;padding-top:0}
+/* 上端に固定する全幅・背景黒のバー（plainNoteの.bar方式）。高さぶんはJSでscroll-areaにmargin-topとして確保 */
+.fixed-top{position:fixed;top:0;left:0;right:0;z-index:10;background:#000;padding:var(--safe-top) max(12px,calc((100% - 560px)/2 + 12px)) 0}
 .locbar{height:var(--top-gap);display:flex;align-items:center;justify-content:center}
 .locframe{border:1px solid var(--border);border-radius:var(--r);padding:0 16px;height:24px;line-height:22px;font-size:.8rem;white-space:nowrap}
 .scroll-area{
@@ -104,10 +106,11 @@ button.ghost{border:1px dashed var(--sub);color:var(--sub)}
 
 /* メッセージウィンドウ（文字列2行ほどの高さ） */
 .msgwin{
+  position:relative;
   height:3.6rem;
   overflow-y:auto;
   font-size:.88rem;
-  padding:7px 10px;
+  padding:7px 22px 7px 10px;
   line-height:1.4;
   margin-bottom:8px;
 }
@@ -123,28 +126,31 @@ button.ghost{border:1px dashed var(--sub);color:var(--sub)}
   80%{transform:translateX(-3px)}
 }
 .shake{animation:shake .45s linear}
+.msgnext{display:none;position:absolute;right:8px;bottom:2px;font-size:.7rem;animation:blink 1s steps(1,end) infinite}
+@keyframes blink{50%{opacity:0}}
+textarea{display:block;width:100%;background:#000;color:#fff;border:1px solid var(--border);border-radius:min(var(--r),8px);padding:6px;font-family:inherit;font-size:16px;margin:4px 0}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
 // ===================== データ =====================
-const MAX_DEPTH = 12;
+let MAX_DEPTH = 12;
 
 const ITEMS = {
-  club:{name:'棍棒',type:'weapon',power:3,price:10,maxDur:20},
-  dagger:{name:'ダガー',type:'weapon',power:4,price:15,maxDur:15},
-  sword:{name:'鋼の剣',type:'weapon',power:7,price:40,maxDur:25},
-  robe:{name:'ローブ',type:'armor',power:2,price:12,maxDur:20},
-  exo:{name:'外骨格',type:'armor',power:4,price:25,maxDur:30},
-  healPotion:{name:'HP回復薬',type:'potion',price:15,effect:'heal'},
-  capsule:{name:'薬',type:'potion',price:15,effect:'random'},
-  idScroll:{name:'鑑定スキャナー',type:'tool',price:20,effect:'identify'},
-  curseFix:{name:'デバッグツール',type:'tool',price:50,effect:'removeCurse'},
-  energyPotion:{name:'EN回復薬',type:'potion',price:20,effect:'energy'},
-  hpSeed:{name:'HP強化パーツ',type:'seed',price:40,effect:'seedHp'},
-  enSeed:{name:'エネルギー強化パーツ',type:'seed',price:40,effect:'seedEn'},
-  skillSeed:{name:'技能強化パーツ',type:'seed',price:40,effect:'seedSkill'},
+  club:{name:'棍棒',type:'weapon',power:3,price:10,maxDur:20,drop:22},
+  dagger:{name:'ダガー',type:'weapon',power:4,price:15,maxDur:15,drop:22},
+  sword:{name:'鋼の剣',type:'weapon',power:7,price:40,maxDur:25,drop:22},
+  robe:{name:'ローブ',type:'armor',power:2,price:12,maxDur:20,drop:22},
+  exo:{name:'外骨格',type:'armor',power:4,price:25,maxDur:30,drop:22},
+  healPotion:{name:'HP回復薬',type:'potion',price:15,effect:'heal',val:15,drop:22},
+  capsule:{name:'薬',type:'potion',price:15,effect:'random',val:15,drop:22,choices:[{e:'heal',w:55},{e:'cureCurse',w:45}]},
+  idScroll:{name:'鑑定スキャナー',type:'tool',price:20,effect:'identify',drop:22},
+  curseFix:{name:'デバッグツール',type:'tool',price:50,effect:'removeCurse',drop:22},
+  energyPotion:{name:'EN回復薬',type:'potion',price:20,effect:'energy',val:10,drop:22},
+  hpSeed:{name:'HP強化パーツ',type:'seed',price:40,effect:'seedHp',val:3,drop:10},
+  enSeed:{name:'エネルギー強化パーツ',type:'seed',price:40,effect:'seedEn',val:3,drop:10},
+  skillSeed:{name:'技能強化パーツ',type:'seed',price:40,effect:'seedSkill',val:3,drop:10},
   junk:{name:'ガラクタ',type:'junk',price:1,fixed:true},
 };
 const DEFAULT_SHOP = ['club','robe','healPotion'];
@@ -166,6 +172,226 @@ const FINAL_BOSS = {
   undead:false, isBoss:true
 };
 
+// ===================== 外部データ（スプレッドシート書き出し） =====================
+const DATA_KEY = 'exo_rogue_data';
+const SEC_NAMES = ['アイテム','モンスター','会話','設定'];
+const CFG_DEFS = [
+  ['最大階層','maxDepth',12,'ダンジョンの最深階（ラスボスがいる階）'],
+  ['初期HP','hp',30,'「記録を消す」後の開始HP'],
+  ['初期EN','energy',20,'開始時のエネルギー（最大値）'],
+  ['初期ATK','atk',5,''],
+  ['初期DEF','def',2,''],
+  ['初期技能','skill',5,''],
+  ['初期所持金','gold',80,''],
+  ['持ち物上限','pack',10,'バックパックの個数'],
+  ['教会解呪料金','church',30,''],
+  ['宿泊料金基本','innBase',10,'宿代＝基本＋到達階×加算'],
+  ['宿泊料金階層加算','innPerDepth',3,''],
+  ['鑑定料金率','idRate',0.5,'買値に対する割合'],
+  ['修理料金率','repairRate',0.5,'買値×率×減った耐久の割合'],
+  ['探索エネルギー','searchCost',1,'「周囲を探す」1回の消費'],
+];
+const CFG = {}; CFG_DEFS.forEach(d=>{ CFG[d[1]]=d[2]; });
+let CUSTOM_TALKS = null;
+const TYPE_LABEL = {weapon:'武器',armor:'防具',potion:'薬',tool:'道具',seed:'強化パーツ',junk:'ガラクタ'};
+const EFFECT_LABEL = {heal:'HP回復',energy:'EN回復',cureCurse:'薬解呪',identify:'鑑定',removeCurse:'装備解呪',seedHp:'HP強化',seedEn:'EN強化',seedSkill:'技能強化',random:'ランダム'};
+const EFFECT_NAMES = {heal:'HP回復薬',energy:'EN回復薬',cureCurse:'解呪薬'};
+const EFFECT_OK = {weapon:[],armor:[],potion:['heal','energy','cureCurse','random'],tool:['identify','removeCurse'],seed:['seedHp','seedEn','seedSkill'],junk:[]};
+function revMap(m){ const r={}; Object.keys(m).forEach(k=>{ r[m[k]]=k; r[k]=k; }); return r; }
+const TYPE_REV = revMap(TYPE_LABEL), EFFECT_REV = revMap(EFFECT_LABEL);
+
+function pickChoice(list){
+  if(!list || !list.length) return 'heal';
+  let r=Math.random()*list.reduce((a,c)=>a+c.w,0);
+  for(const c of list){ r-=c.w; if(r<0) return c.e; }
+  return list[list.length-1].e;
+}
+function cnum(v,d){ const n=parseFloat(String(v===undefined?'':v).replace(/,/g,'')); return isFinite(n)?n:d; }
+function cflag(v){ return /^(1|○|◯|true|yes|はい|有|あり)$/i.test(String(v===undefined?'':v).trim()); }
+
+// TSV（Googleスプレッドシートからコピーした形式。"で囲まれたセルにも対応）
+function tsvParse(text){
+  const rows=[]; let row=[], cell='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; } else cell+=c; }
+    else if(c==='"' && cell===''){ q=true; }
+    else if(c==='\t'){ row.push(cell); cell=''; }
+    else if(c==='\n' || c==='\r'){ if(c==='\r' && text[i+1]==='\n') i++; row.push(cell); cell=''; rows.push(row); row=[]; }
+    else cell+=c;
+  }
+  if(cell!=='' || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r=>r.some(x=>x.trim()!==''));
+}
+function tsvCell(v){ v=(v===undefined||v===null)?'':String(v); return /[\t\n\r"]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function tsvRows(rows){ return rows.map(r=>r.map(tsvCell).join('\t')).join('\n'); }
+function splitSections(text){
+  const sec={}; let cur=null, buf=[];
+  text.split(/\r?\n/).forEach(l=>{
+    const m=l.match(/^#\s*(.+?)\s*$/);
+    if(m){ if(cur!==null) sec[cur]=buf.join('\n'); cur=m[1]; buf=[]; }
+    else if(cur!==null) buf.push(l);
+  });
+  if(cur!==null) sec[cur]=buf.join('\n');
+  return sec;
+}
+function tableObjects(raw){
+  const rows=tsvParse(raw); if(!rows.length) return [];
+  const h=rows[0].map(x=>x.trim());
+  return rows.slice(1).map((r,i)=>{ const o={_line:i+2}; h.forEach((k,j)=>{ if(k) o[k]=(r[j]===undefined?'':r[j]).trim(); }); return o; });
+}
+
+function parseItems(raw,err){
+  const items={}, shop=[];
+  tableObjects(raw).forEach(r=>{
+    const at='アイテム'+r._line+'行目: ';
+    const id=r['ID'];
+    if(!id) return err.push(at+'IDが空です');
+    if(items[id]) return err.push(at+'IDが重複しています: '+id);
+    const type=TYPE_REV[r['種別']];
+    if(!type) return err.push(at+'種別が不明です: '+r['種別']);
+    let eff='';
+    if(r['効果']){ eff=EFFECT_REV[r['効果']]; if(!eff) return err.push(at+'効果が不明です: '+r['効果']); }
+    if(eff && !EFFECT_OK[type].includes(eff)) return err.push(at+'この種別では使えない効果です: '+r['効果']);
+    if(!eff && (type==='potion'||type==='tool'||type==='seed')) return err.push(at+'効果が必要です');
+    const o={name:r['名称']||id, type, price:cnum(r['価格'],0)};
+    if(r['不確定名']) o.unid=r['不確定名'];
+    if(type==='weapon'||type==='armor'){ o.power=cnum(r['値'],1); o.maxDur=cnum(r['耐久'],20); }
+    else { if(eff) o.effect=eff; if(r['値']!==undefined && r['値']!=='') o.val=cnum(r['値'],0); }
+    if(cflag(r['固定'])) o.fixed=true;
+    o.drop=Math.max(0,cnum(r['ドロップ重み'],0));
+    if(eff==='random'){
+      const ch=[]; let bad='';
+      String(r['選択肢']||'').split('|').forEach(t=>{
+        t=t.trim(); if(!t) return;
+        const pr=t.split(/[:：]/); const e=EFFECT_REV[pr[0].trim()];
+        if(!e || !['heal','energy','cureCurse'].includes(e)) { bad=pr[0]; return; }
+        ch.push({e, w:Math.max(0,cnum(pr[1],1))});
+      });
+      if(bad) return err.push(at+'選択肢の効果が不明です: '+bad);
+      if(!ch.length) return err.push(at+'効果「ランダム」には選択肢が必要です（例: HP回復:55|薬解呪:45）');
+      o.choices=ch;
+    }
+    items[id]=o;
+    if(cflag(r['店常備'])) shop.push(id);
+  });
+  if(!items.junk) items.junk={name:'ガラクタ',type:'junk',price:1,fixed:true};
+  return {items,shop};
+}
+function parseMonsters(raw,err){
+  const list=[]; let boss=null;
+  tableObjects(raw).forEach(r=>{
+    const at='モンスター'+r._line+'行目: ';
+    if(!r['名称']) return err.push(at+'名称が空です');
+    const hp=cnum(r['HP'],1), atk=cnum(r['ATK'],1), def=cnum(r['DEF'],0);
+    const g0=cnum(r['金下限'],0), g1=Math.max(g0,cnum(r['金上限'],g0));
+    const undead=cflag(r['アンデッド']);
+    if(cflag(r['ボス'])){
+      if(boss) return err.push(at+'ボスは1体だけです');
+      boss={name:r['名称'],hp,maxHp:hp,atk,def,goldMin:g0,goldMax:g1,undead,isBoss:true}; return;
+    }
+    list.push({name:r['名称'],hp,atk,def,gold:[g0,g1],undead,min:cnum(r['最小階'],1),max:cnum(r['最大階'],99)});
+  });
+  if(!list.length) err.push('モンスター: 通常のモンスターが1体もいません');
+  return {list,boss};
+}
+function parseTalks(raw,err){
+  const out=[];
+  tableObjects(raw).forEach(r=>{ const t=r['内容']; if(!t) return; out.push(r['話者'] ? r['話者']+':「'+t+'」' : t); });
+  if(!out.length) err.push('会話: 内容のある行がありません');
+  return out;
+}
+function parseCfg(raw,err){
+  const cfg={};
+  tableObjects(raw).forEach(r=>{
+    const at='設定'+r._line+'行目: ';
+    const d=CFG_DEFS.find(x=>x[0]===r['項目']);
+    if(!d){ if(r['項目']) err.push(at+'項目が不明です: '+r['項目']); return; }
+    const v=parseFloat(r['値']);
+    if(!isFinite(v)) return err.push(at+'値が数値ではありません: '+r['値']);
+    cfg[d[1]]=v;
+  });
+  return cfg;
+}
+function parseGameData(sec){
+  const err=[], d={};
+  if(sec['アイテム']!==undefined){ const r=parseItems(sec['アイテム'],err); d.items=r.items; d.shop=r.shop; }
+  if(sec['モンスター']!==undefined){ const r=parseMonsters(sec['モンスター'],err); d.monsters=r.list; d.boss=r.boss; }
+  if(sec['会話']!==undefined) d.talks=parseTalks(sec['会話'],err);
+  if(sec['設定']!==undefined) d.cfg=parseCfg(sec['設定'],err);
+  return {d,err};
+}
+function applyGameData(d){
+  if(d.items){
+    Object.keys(ITEMS).forEach(k=>{ delete ITEMS[k]; }); Object.assign(ITEMS,d.items);
+    DEFAULT_SHOP.length=0; d.shop.forEach(k=>DEFAULT_SHOP.push(k));
+  }
+  if(d.monsters){
+    MONSTERS.length=0; d.monsters.forEach(m=>MONSTERS.push(m));
+    if(d.boss){ Object.keys(FINAL_BOSS).forEach(k=>{ delete FINAL_BOSS[k]; }); Object.assign(FINAL_BOSS,d.boss); }
+  }
+  if(d.talks) CUSTOM_TALKS=d.talks;
+  if(d.cfg){ Object.assign(CFG,d.cfg); CFG.maxDepth=Math.max(1,Math.round(CFG.maxDepth)); MAX_DEPTH=CFG.maxDepth; }
+}
+function loadGameData(){
+  try{
+    const store=JSON.parse(localStorage.getItem(DATA_KEY)||'null'); if(!store) return;
+    const r=parseGameData(store); if(!r.err.length) applyGameData(r.d);
+  }catch(e){}
+}
+function exportGameText(){
+  const wa=b=>b.type==='weapon'||b.type==='armor';
+  const items=[['ID','名称','不確定名','種別','効果','値','価格','耐久','固定','店常備','ドロップ重み','選択肢']];
+  Object.keys(ITEMS).forEach(k=>{
+    const b=ITEMS[k];
+    items.push([k,b.name,b.unid||'',TYPE_LABEL[b.type]||b.type,b.effect?(EFFECT_LABEL[b.effect]||b.effect):'',
+      wa(b)?b.power:(b.val!==undefined?b.val:''),b.price,wa(b)?b.maxDur:'',b.fixed?1:'',DEFAULT_SHOP.includes(k)?1:'',b.drop||'',
+      (b.choices||[]).map(c=>EFFECT_LABEL[c.e]+':'+c.w).join('|')]);
+  });
+  const mons=[['名称','HP','ATK','DEF','金下限','金上限','アンデッド','最小階','最大階','ボス']];
+  MONSTERS.forEach(m=>mons.push([m.name,m.hp,m.atk,m.def,m.gold[0],m.gold[1],m.undead?1:'',m.min,m.max,'']));
+  mons.push([FINAL_BOSS.name,FINAL_BOSS.hp,FINAL_BOSS.atk,FINAL_BOSS.def,FINAL_BOSS.goldMin,FINAL_BOSS.goldMax,FINAL_BOSS.undead?1:'','','',1]);
+  const talks=[['話者','内容']];
+  (CUSTOM_TALKS||TALKS).forEach(t=>{ const m=t.match(/^(.+?):「([\s\S]*)」$/); talks.push(m?[m[1],m[2]]:['',t]); });
+  const cfg=[['項目','値','説明']];
+  CFG_DEFS.forEach(d=>cfg.push([d[0],CFG[d[1]],d[3]]));
+  return ['#アイテム\n'+tsvRows(items),'#モンスター\n'+tsvRows(mons),'#会話\n'+tsvRows(talks),'#設定\n'+tsvRows(cfg)].join('\n\n');
+}
+function dataMsg(t){ const e=document.getElementById('dataMsg'); if(e) e.textContent=t; }
+function dataLoadFromText(){
+  const ta=document.getElementById('dataText'); if(!ta) return;
+  const sec=splitSections(ta.value), known={};
+  Object.keys(sec).forEach(n=>{ if(SEC_NAMES.includes(n)) known[n]=sec[n]; });
+  if(!Object.keys(known).length){ dataMsg('「#アイテム」「#モンスター」「#会話」「#設定」の見出し行が見つかりません。'); return; }
+  const r=parseGameData(known);
+  if(r.err.length){ dataMsg('読み込めません:\n'+r.err.slice(0,8).join('\n')); return; }
+  let store={}; try{ store=JSON.parse(localStorage.getItem(DATA_KEY)||'{}')||{}; }catch(e){}
+  Object.assign(store,known);
+  try{ localStorage.setItem(DATA_KEY,JSON.stringify(store)); }catch(e){ dataMsg('保存に失敗しました。'); return; }
+  dataMsg(Object.keys(known).join('・')+' を読み込みました。再起動します…');
+  setTimeout(()=>location.reload(),700);
+}
+function dataLoadFromFile(inp){
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ const ta=document.getElementById('dataText'); if(ta){ ta.value=rd.result; dataLoadFromText(); } };
+  rd.readAsText(f);
+}
+function dataExport(){
+  const ta=document.getElementById('dataText'); if(!ta) return;
+  ta.value=exportGameText(); dataMsg('現在のデータを書き出しました。');
+}
+function dataCopy(){
+  const ta=document.getElementById('dataText'); if(!ta||!ta.value) return;
+  const fb=()=>{ ta.focus(); ta.select(); try{ ta.setSelectionRange(0,ta.value.length); document.execCommand('copy'); dataMsg('コピーしました。'); }catch(e){ dataMsg('選択しました。コピーしてください。'); } };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(()=>dataMsg('コピーしました。'),fb); else fb();
+}
+function dataReset(){
+  if(!confirm('読み込んだデータを消して初期データに戻します（ゲームの記録は消えません）。よろしいですか？')) return;
+  localStorage.removeItem(DATA_KEY); location.reload();
+}
+loadGameData();
+
 // ===================== 状態 =====================
 let uidSeed = 1;
 function uid(){ return uidSeed++; }
@@ -174,7 +400,7 @@ if(S){
   uidSeed = S.uid || uidSeed;
   if(S.statusCursed) delete S.statusCursed;
   [...(S.backpack||[]), S.equipment?.weapon, S.equipment?.armor].filter(Boolean).forEach(it=>{
-    if(it.junk) convertToJunk(it);
+    if(it.junk || !ITEMS[it.key]) convertToJunk(it);
   });
 } else {
   S = freshState();
@@ -209,8 +435,49 @@ function triggerTypewriter(fullText){
     if(idx >= fullText.length){
       clearInterval(twTimer);
       twTimer = null;
+      updateNext();
     }
   }, 10);
+}
+
+// ---- 長文メッセージのページ送り（2行ごと・▼点滅・ウィンドウをタップで次へ） ----
+let pgText='', pgPages=[], pgIdx=0;
+function splitPages(text){
+  const box=document.getElementById('msgBox');
+  if(!box) return [text];
+  const probe=document.createElement('div');
+  probe.className='panel msgwin';
+  probe.style.cssText='position:absolute;left:-9999px;top:0;visibility:hidden;height:auto;overflow:visible;width:'+box.offsetWidth+'px';
+  const inner=document.createElement('div'), tn=document.createTextNode(text);
+  inner.appendChild(tn); probe.appendChild(inner); box.parentNode.appendChild(probe);
+  const rg=document.createRange(), starts=[0]; let top=null;
+  for(let i=0;i<text.length;i++){
+    rg.setStart(tn,i); rg.setEnd(tn,i+1);
+    const rc=rg.getClientRects(); if(!rc.length) continue;
+    if(top===null) top=rc[0].top; else if(rc[0].top>top+3){ starts.push(i); top=rc[0].top; }
+  }
+  box.parentNode.removeChild(probe);
+  const pages=[];
+  for(let k=0;k<starts.length;k+=2) pages.push(text.slice(starts[k], starts[k+2]===undefined?text.length:starts[k+2]));
+  return pages;
+}
+function pagedMessage(latest){
+  if(S.run || !latest){ pgText=''; pgPages=[]; pgIdx=0; return latest; }
+  if(latest!==pgText){ pgText=latest; pgPages=splitPages(latest); pgIdx=0; }
+  return pgPages[pgIdx]!==undefined ? pgPages[pgIdx] : latest;
+}
+function updateNext(){
+  const n=document.getElementById('msgNext'); if(!n) return;
+  n.style.display=(!S.run && !twTimer && pgIdx<pgPages.length-1) ? 'block' : 'none';
+}
+function msgTap(){
+  if(S.run) return;
+  if(twTimer){
+    clearInterval(twTimer); twTimer=null; twCurrentText=twLastTarget;
+    const el=document.getElementById('msgLatest'); if(el) el.textContent=twCurrentText;
+    updateNext(); return;
+  }
+  if(pgIdx<pgPages.length-1){ pgIdx++; render(); }
 }
 
 function toast(msg){
@@ -230,10 +497,10 @@ function gotoScreen(scr, locMsg){
 function freshState(){
   return {
     uid:1,
-    hp:30,maxHp:30,energy:20,maxEnergy:20,atk:5,def:2,skill:5,
-    gold:80,debt:0,maxDepthReached:1,
+    hp:CFG.hp,maxHp:CFG.hp,energy:CFG.energy,maxEnergy:CFG.energy,atk:CFG.atk,def:CFG.def,skill:CFG.skill,
+    gold:CFG.gold,debt:0,maxDepthReached:1,
     backpack:[genInstance('club',1,true),genInstance('robe',1,true),genInstance('healPotion',1,true)],
-    backpackLimit:10,
+    backpackLimit:CFG.pack,
     equipment:{weapon:null,armor:null},
     shop:{},
     screen:'start', menuOpen:false, radius:6,
@@ -277,7 +544,7 @@ function genInstance(key, depth, guaranteedSafe){
   else { it.identified = guaranteedSafe ? true : Math.random()<0.2; }
   if(it.cursed){ it.identified=false; it.cursedRevealed=false; }
   if(base.type==='potion' && base.effect==='random'){
-    it.effect = Math.random()<0.55 ? 'heal' : 'cureCurse';
+    it.effect = pickChoice(base.choices);
   } else if(base.effect && base.effect!=='random'){
     it.effect = base.effect;
   }
@@ -301,12 +568,13 @@ function dispName(it){
   const b=ITEMS[it.key];
   // 不確定名の統一ルール
   if(!it.identified){
+    if(b.unid) return b.unid;
     if(b.type==='seed' || b.type==='tool') return '謎の端末';
     if(b.type==='potion') return '謎の液体';
     return '謎の'+b.name;
   }
   let base=b.name;
-  if(it.key==='capsule') base=({heal:'HP回復薬',cureCurse:'解呪薬'})[it.effect]||b.name;
+  if(b.effect==='random') base=EFFECT_NAMES[it.effect]||b.name;
   let n = base;
   if(b.type==='weapon'||b.type==='armor') n+=' Lv'+it.level;
   if(it.cursedRevealed) n+='(呪)';
@@ -343,6 +611,7 @@ function locationName(){
   if(sc.indexOf('shop')===0) return '店';
   return ({town:'町',church:'教会',lounge:'ラウンジ',inn:'宿',dungeonSetup:'ダンジョン入口'})[sc] || '';
 }
+let topRO=null;
 function render(){
   applyRadius();
   if(S.screen==='equip') S.screen='town';
@@ -367,6 +636,7 @@ function render(){
   const prevTop = prevScroll ? prevScroll.scrollTop : 0;
   app.innerHTML = html + ((S.menuOpen && S.screen==='start') ? renderMenuOverlay() : '');
   const hud = app.querySelector('.sticky-hud');
+  if(topRO){ topRO.disconnect(); topRO=null; }
   app.classList.toggle('split', !!hud);
   if(hud){
     const fixedTop = document.createElement('div'); fixedTop.className = 'fixed-top';
@@ -378,17 +648,22 @@ function render(){
     const idx = kids.indexOf(hud);
     kids.forEach((n,i)=>{ (i<=idx ? fixedTop : scrollArea).appendChild(n); });
     app.appendChild(fixedTop); app.appendChild(scrollArea);
+    const fit = ()=>{ scrollArea.style.marginTop = fixedTop.offsetHeight+'px'; };
+    fit();
+    if(window.ResizeObserver){ topRO = new ResizeObserver(fit); topRO.observe(fixedTop); }
     scrollArea.scrollTop = prevTop;
   }
 
   if(S.screen !== 'start'){
     const lines = getMsgLines();
     const latest = lines.length ? lines[lines.length - 1] : '';
-    triggerTypewriter(latest);
+    const shown = pagedMessage(latest);
+    triggerTypewriter(shown);
     const el = document.getElementById('msgLatest');
-    if(el) el.textContent = (latest === twLastTarget) ? twCurrentText : latest;
+    if(el) el.textContent = (shown === twLastTarget) ? twCurrentText : shown;
     const box = document.getElementById('msgBox');
     if(box) box.scrollTop = box.scrollHeight;
+    updateNext();
   }
 
   try{ saveState(); }catch(e){}
@@ -414,6 +689,18 @@ function renderMenuOverlay(){
           <span>所持金(G)</span><input type="number" value="${S.gold}" onchange="setDebugStat('gold',this.value)">
           <span>到達深層</span><input type="number" min="1" max="${MAX_DEPTH}" value="${S.maxDepthReached}" onchange="setDebugStat('maxDepthReached',this.value)">
         </div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
+        <div class="sub" style="margin-bottom:6px">データ読込（スプレッドシートの書き出し）</div>
+        <textarea id="dataText" rows="5" placeholder="「#アイテム」などの見出し付きテキストを貼り付け"></textarea>
+        <button onclick="dataLoadFromText()">貼り付けたデータを読み込む</button>
+        <button onclick="document.getElementById('dataFile').click()">ファイルから読み込む</button>
+        <input id="dataFile" type="file" accept=".txt,.tsv,text/plain" style="display:none" onchange="dataLoadFromFile(this)">
+        <button onclick="dataExport()">現在のデータを書き出す</button>
+        <button onclick="dataCopy()">欄の内容をコピー</button>
+        <button class="ghost" onclick="dataReset()">初期データに戻す</button>
+        <div id="dataMsg" class="sub" style="white-space:pre-wrap;margin-bottom:10px"></div>
       </div>
 
       <button class="danger" onclick="resetGame()">記録を消す</button>
@@ -455,10 +742,10 @@ function getMsgLines(){
 function msgWindow(){
   const lines = getMsgLines();
   if(lines.length === 0){
-    return `<div class="panel msgwin" id="msgBox"><div id="msgLatest"></div></div>`;
+    return `<div class="panel msgwin" id="msgBox" onclick="msgTap()"><div id="msgLatest"></div><span id="msgNext" class="msgnext">▼</span></div>`;
   }
   if(lines.length === 1){
-    return `<div class="panel msgwin" id="msgBox"><div id="msgLatest">${lines[0]}</div></div>`;
+    return `<div class="panel msgwin" id="msgBox" onclick="msgTap()"><div id="msgLatest">${lines[0]}</div><span id="msgNext" class="msgnext">▼</span></div>`;
   }
   return `<div class="panel msgwin" id="msgBox">
     <div class="sub">${lines[0]}</div>
@@ -543,7 +830,7 @@ function renderTown(){
 }
 
 // ---- 教会 ----
-function churchCost(){ return 30; }
+function churchCost(){ return CFG.church; }
 function cursedList(){
   return [S.equipment.weapon,S.equipment.armor,...S.backpack].filter(it=>it&&!it.junk&&it.cursed&&(it.cursedRevealed||it.locked));
 }
@@ -639,7 +926,7 @@ function sellItem(u){
     toast('ガラクタを'+price+'Gで処分した（棚には並ばない）。');
   }
 }
-function identifyCost(it){ return Math.max(1, Math.round(refPrice(it)*0.5)); }
+function identifyCost(it){ return Math.max(1, Math.round(refPrice(it)*CFG.idRate)); }
 
 // ---- 鑑定（商店） ----
 function renderShopIdentify(){
@@ -673,7 +960,7 @@ function renderShopRepair(){
 }
 function repairCost(it){
   const ratio=Math.max(0,Math.min(1,it.durability/it.maxDurability));
-  return Math.max(1, Math.round(refPrice(it)*0.5*(1-ratio)));
+  return Math.max(1, Math.round(refPrice(it)*CFG.repairRate*(1-ratio)));
 }
 function findAnyItem(u){
   let it=S.backpack.find(i=>i.uid===u); if(it)return it;
@@ -691,7 +978,7 @@ function repairItem(u){
 
 // ---- 宿 ----
 function renderInn(){
-  const cost = 10 + S.maxDepthReached*3;
+  const cost = CFG.innBase + S.maxDepthReached*CFG.innPerDepth;
   return hudBlock()+`<div class="panel">
     <button class="primary" onclick="rest(${cost})">休む(HP・エネルギー全回復) <span class="tag">${cost}G</span></button>
     <button onclick="stable()">馬小屋(エネルギーのみ回復) <span class="tag">無料</span></button>
@@ -730,8 +1017,9 @@ let lastTalk=-1;
 function enterLounge(){ gotoScreen('lounge','【宿のラウンジ】常連たちが思い思いに話している。'); }
 function leaveLounge(){ gotoScreen('inn','【宿】ロビーに戻った。'); }
 function talk(){
-  let i; do{ i=Math.floor(Math.random()*TALKS.length); }while(i===lastTalk && TALKS.length>1);
-  lastTalk=i; toastMsg=TALKS[i]; render();
+  const T=CUSTOM_TALKS||TALKS;
+  let i; do{ i=Math.floor(Math.random()*T.length); }while(i===lastTalk && T.length>1);
+  lastTalk=i; toastMsg=T[i]; render();
 }
 function renderLounge(){
   return hudBlock()+`<div class="panel">
@@ -805,7 +1093,8 @@ function renderDungeon(){
   const r=S.run;
   let enc='';
   if(r.encounter) enc = renderEncounter();
-  else enc = `<button class="primary" onclick="doSearch()">周囲を探す <span class="tag">エネルギー1</span></button>
+  else enc = `<button class="primary" onclick="doSearch()">周囲を探す <span class="tag">エネルギー${CFG.searchCost}</span></button>${(r.stairsFound && r.depth<MAX_DEPTH) ? `
+    <button onclick="descend(${r.depth+1})">階段を降りる <span class="tag">エネルギー${r.depth+1}</span></button>` : ''}
     <button onclick="doReturn()">帰還する <span class="tag">エネルギー${returnCost()}</span></button>`;
   return hudBlock()+
      `<div class="panel">${enc}<button class="ghost" onclick="openItems('dungeon')">持ち物</button></div>`;
@@ -813,7 +1102,7 @@ function renderDungeon(){
 function returnCost(){ return S.run.depth + Math.floor(S.run.turns/5); }
 
 function doSearch(){
-  const cost=1;
+  const cost=CFG.searchCost;
   S.energy-=cost; S.run.turns++;
   if(S.energy<=0){ pushLog('エネルギーが尽きて倒れた…'); collapse(); return; }
 
@@ -842,13 +1131,16 @@ function doSearch(){
   else if(r<0.55){ const it=genInstance(pickRandomDropKey(),S.run.depth); S.run.encounter={type:'item', item:it}; pushLog(dispName(it)+'が落ちている。'); }
   else if(r<0.70){ S.run.encounter={type:'trap'}; pushLog('宝箱を見つけた。罠があるかもしれない。'); }
   else if(r<0.90){ const mon=spawnMonster(S.run.depth); S.run.encounter={type:'enemy', mon}; pushLog(mon.name+'が現れた！'); }
-  else { S.run.encounter={type:'stairs'}; pushLog('階段を見つけた。更に深く進めそうだ。'); }
+  else if(S.run.stairsFound){ pushLog('【深層'+S.run.depth+'】何も見つからなかった。'); S.run.encounter=null; }
+  else { S.run.encounter={type:'stairs'}; S.run.stairsFound=true; pushLog('階段を見つけた。更に深く進めそうだ。'); }
   render();
 }
 function pickRandomDropKey(){
-  if(Math.random()<0.12){ const seeds=['hpSeed','enSeed','skillSeed']; return seeds[Math.floor(Math.random()*seeds.length)]; }
-  const pool=['club','dagger','sword','robe','exo','healPotion','capsule','idScroll','curseFix','energyPotion'];
-  return pool[Math.floor(Math.random()*pool.length)];
+  const ks=Object.keys(ITEMS).filter(k=>ITEMS[k].drop>0);
+  if(!ks.length) return 'healPotion';
+  let r=Math.random()*ks.reduce((a,k)=>a+ITEMS[k].drop,0);
+  for(const k of ks){ r-=ITEMS[k].drop; if(r<0) return k; }
+  return ks[ks.length-1];
 }
 function spawnMonster(depth){
   const cands=MONSTERS.filter(m=>depth>=m.min&&depth<=m.max);
@@ -922,7 +1214,7 @@ function openChest(){
 function descend(cost){
   if(S.run.depth >= MAX_DEPTH){ toast('ここが最深部だ。これ以上は降りられない。'); S.run.encounter=null; render(); return; }
   if(S.energy<cost){ toast('エネルギーが足りません'); return; }
-  S.energy-=cost; S.run.depth+=1; S.run.turns=0;
+  S.energy-=cost; S.run.depth+=1; S.run.turns=0; S.run.stairsFound=false;
   S.maxDepthReached=Math.max(S.maxDepthReached, S.run.depth);
   const msg = (S.run.depth===MAX_DEPTH)
     ? `【最深部 深層${S.run.depth}】へ降りた。ここがダンジョンの最奥だ！`
@@ -968,6 +1260,12 @@ function armorPower(){
   return Math.round(ITEMS[a.key].power*(1+((a.level||1)-1)*0.5));
 }
 function atkTotal(){ return S.atk + weaponPower(); }
+// ドラクエ式: 基本値=攻撃力/2-守備力/4、幅=基本値/16+1、実ダメージ=基本値±幅（最低1）
+function calcDamage(atk,def){
+  const base=Math.floor(atk/2-def/4);
+  const w=Math.max(0,Math.floor(base/16)+1);
+  return Math.max(1, base+Math.floor(Math.random()*(w*2+1))-w);
+}
 function defTotal(){ return S.def + armorPower(); }
 function renderCombat(){
   const m=S.combat.mon;
@@ -1007,7 +1305,7 @@ function handleMonsterDefeat(m){
 async function enemyAct(){
   const m=S.combat.mon;
   if(m.hp<=0) return true;
-  const dmg=Math.max(1, m.atk - defTotal());
+  const dmg=calcDamage(m.atk, defTotal());
   S.hp=Math.max(0,S.hp-dmg);
   pushLogSafe(m.name+'から'+dmg+'ダメージを受けた。');
   const ar=S.equipment.armor;
@@ -1029,8 +1327,7 @@ async function combatAttack(){
   if(busy||!S.combat) return; busy=true;
   try{
     const m=S.combat.mon;
-    const rawDmg = atkTotal() - (m.def || 0) - Math.floor(Math.random()*3);
-    const dmg = Math.max(1, rawDmg);
+    const dmg = calcDamage(atkTotal(), m.def || 0);
     m.hp-=dmg;
     const w=S.equipment.weapon;
     pushLogSafe(m.name+'に'+dmg+'ダメージ。');
@@ -1196,8 +1493,8 @@ function useOnSelf(u){
   if(it.junk || it.key==='junk'){ note('ガラクタは使えない。'); return; }
   if(b.type==='potion'){
     it.identified=true;
-    if(it.effect==='heal'){ const heal=Math.min(S.maxHp-S.hp,15); S.hp+=heal; note(heal+'回復した。'); }
-    else if(it.effect==='energy'){ const g=Math.min(S.maxEnergy-S.energy,10); S.energy+=g; note('エネルギーが'+g+'回復した。'); }
+    if(it.effect==='heal'){ const heal=Math.min(S.maxHp-S.hp,b.val||15); S.hp+=heal; note(heal+'回復した。'); }
+    else if(it.effect==='energy'){ const g=Math.min(S.maxEnergy-S.energy,b.val||10); S.energy+=g; note('エネルギーが'+g+'回復した。'); }
     else if(it.effect==='cureCurse'){
       const cw = (S.equipment.weapon && S.equipment.weapon.cursed) ? S.equipment.weapon : null;
       const ca = (S.equipment.armor && S.equipment.armor.cursed) ? S.equipment.armor : null;
@@ -1208,7 +1505,7 @@ function useOnSelf(u){
     S.backpack.splice(idx,1);
   } else if(b.type==='seed'){
     it.identified=true;
-    const n=1+Math.floor(Math.random()*3);
+    const n=1+Math.floor(Math.random()*(b.val||3));
     if(b.effect==='seedHp'){ S.maxHp+=n; S.hp+=n; note(b.name+'を使った！ 最大HPが'+n+'上がった。'); }
     else if(b.effect==='seedEn'){ S.maxEnergy+=n; S.energy+=n; note(b.name+'を使った！ 最大エネルギーが'+n+'上がった。'); }
     else { S.skill+=n; note(b.name+'を使った！ 技能が'+n+'上がった。'); }
@@ -1236,8 +1533,9 @@ async function throwAtEnemy(u){
     m.hp-=dmg; hit=true; pushLogSafe(nm+'を投げつけた！ '+dmg+'ダメージ。');
   } else if(!isJunkItem && b.type==='potion'){
     if(it.effect==='heal'){
-      if(m.undead){ m.hp-=15; hit=true; pushLogSafe(nm+'を浴びせた！ アンデッドに15ダメージ。'); }
-      else { const g=Math.min(m.maxHp-m.hp,15); m.hp+=g; pushLogSafe(nm+'を投げつけた…敵が'+g+'回復してしまった。'); }
+      const hv=b.val||15;
+      if(m.undead){ m.hp-=hv; hit=true; pushLogSafe(nm+'を浴びせた！ アンデッドに'+hv+'ダメージ。'); }
+      else { const g=Math.min(m.maxHp-m.hp,hv); m.hp+=g; pushLogSafe(nm+'を投げつけた…敵が'+g+'回復してしまった。'); }
     } else pushLogSafe(nm+'を投げつけたが、効果はなかった。');
   } else {
     pushLogSafe(nm+'を投げつけたが、効果はなかった。');
