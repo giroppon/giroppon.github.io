@@ -115,6 +115,7 @@ button.ghost{border:1px dashed var(--sub);color:var(--sub)}
   margin-bottom:8px;
 }
 
+#msgLatest{white-space:pre-wrap}
 .debug-grid{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;margin:8px 0 12px;font-size:.85rem}
 
 @keyframes shake{
@@ -151,6 +152,8 @@ const ITEMS = {
   hpSeed:{name:'HP強化パーツ',type:'seed',price:40,effect:'seedHp',val:3,drop:10},
   enSeed:{name:'エネルギー強化パーツ',type:'seed',price:40,effect:'seedEn',val:3,drop:10},
   skillSeed:{name:'技能強化パーツ',type:'seed',price:40,effect:'seedSkill',val:3,drop:10},
+  atkSeed:{name:'ATK強化パーツ',type:'seed',price:60,effect:'seedAtk',val:2,drop:6},
+  defSeed:{name:'DEF強化パーツ',type:'seed',price:60,effect:'seedDef',val:2,drop:6},
   junk:{name:'ガラクタ',type:'junk',price:1,fixed:true},
 };
 const DEFAULT_SHOP = ['club','robe','healPotion'];
@@ -194,9 +197,9 @@ const CFG_DEFS = [
 const CFG = {}; CFG_DEFS.forEach(d=>{ CFG[d[1]]=d[2]; });
 let CUSTOM_TALKS = null;
 const TYPE_LABEL = {weapon:'武器',armor:'防具',potion:'薬',tool:'道具',seed:'強化パーツ',junk:'ガラクタ'};
-const EFFECT_LABEL = {heal:'HP回復',energy:'EN回復',cureCurse:'薬解呪',identify:'鑑定',removeCurse:'装備解呪',seedHp:'HP強化',seedEn:'EN強化',seedSkill:'技能強化',random:'ランダム'};
+const EFFECT_LABEL = {heal:'HP回復',energy:'EN回復',cureCurse:'薬解呪',identify:'鑑定',removeCurse:'装備解呪',seedHp:'HP強化',seedEn:'EN強化',seedSkill:'技能強化',seedAtk:'ATK強化',seedDef:'DEF強化',random:'ランダム'};
 const EFFECT_NAMES = {heal:'HP回復薬',energy:'EN回復薬',cureCurse:'解呪薬'};
-const EFFECT_OK = {weapon:[],armor:[],potion:['heal','energy','cureCurse','random'],tool:['identify','removeCurse'],seed:['seedHp','seedEn','seedSkill'],junk:[]};
+const EFFECT_OK = {weapon:[],armor:[],potion:['heal','energy','cureCurse','random'],tool:['identify','removeCurse'],seed:['seedHp','seedEn','seedSkill','seedAtk','seedDef'],junk:[]};
 function revMap(m){ const r={}; Object.keys(m).forEach(k=>{ r[m[k]]=k; r[k]=k; }); return r; }
 const TYPE_REV = revMap(TYPE_LABEL), EFFECT_REV = revMap(EFFECT_LABEL);
 
@@ -295,9 +298,26 @@ function parseMonsters(raw,err){
   if(!list.length) err.push('モンスター: 通常のモンスターが1体もいません');
   return {list,boss};
 }
-function parseTalks(raw,err){
+function resolveItemKey(s,items){
+  s=String(s||'').trim(); if(!s) return '';
+  if(items[s]) return s;
+  return Object.keys(items).find(k=>items[k].name===s)||'';
+}
+function parseTalks(raw,err,items){
   const out=[];
-  tableObjects(raw).forEach(r=>{ const t=r['内容']; if(!t) return; out.push(r['話者'] ? r['話者']+':「'+t+'」' : t); });
+  tableObjects(raw).forEach(r=>{
+    const at='会話'+r._line+'行目: ';
+    const text=r['内容']; if(!text) return;
+    const t={who:r['話者']||'', text, want:'', give:'', times:1, thanks:r['お礼']||''};
+    const w=r['求める品'], g=r['報酬'];
+    if(w||g){
+      if(!w||!g) return err.push(at+'「求める品」と「報酬」は両方必要です');
+      t.want=resolveItemKey(w,items); if(!t.want) return err.push(at+'求める品が見つかりません: '+w);
+      t.give=resolveItemKey(g,items); if(!t.give) return err.push(at+'報酬が見つかりません: '+g);
+      if(r['回数']!==undefined && r['回数']!=='') t.times=Math.max(0,Math.round(cnum(r['回数'],1)));
+    }
+    out.push(t);
+  });
   if(!out.length) err.push('会話: 内容のある行がありません');
   return out;
 }
@@ -317,7 +337,7 @@ function parseGameData(sec){
   const err=[], d={};
   if(sec['アイテム']!==undefined){ const r=parseItems(sec['アイテム'],err); d.items=r.items; d.shop=r.shop; }
   if(sec['モンスター']!==undefined){ const r=parseMonsters(sec['モンスター'],err); d.monsters=r.list; d.boss=r.boss; }
-  if(sec['会話']!==undefined) d.talks=parseTalks(sec['会話'],err);
+  if(sec['会話']!==undefined) d.talks=parseTalks(sec['会話'],err,d.items||ITEMS);
   if(sec['設定']!==undefined) d.cfg=parseCfg(sec['設定'],err);
   return {d,err};
 }
@@ -351,8 +371,9 @@ function exportGameText(){
   const mons=[['名称','HP','ATK','DEF','金下限','金上限','アンデッド','最小階','最大階','ボス']];
   MONSTERS.forEach(m=>mons.push([m.name,m.hp,m.atk,m.def,m.gold[0],m.gold[1],m.undead?1:'',m.min,m.max,'']));
   mons.push([FINAL_BOSS.name,FINAL_BOSS.hp,FINAL_BOSS.atk,FINAL_BOSS.def,FINAL_BOSS.goldMin,FINAL_BOSS.goldMax,FINAL_BOSS.undead?1:'','','',1]);
-  const talks=[['話者','内容']];
-  (CUSTOM_TALKS||TALKS).forEach(t=>{ const m=t.match(/^(.+?):「([\s\S]*)」$/); talks.push(m?[m[1],m[2]]:['',t]); });
+  const talks=[['話者','内容','求める品','報酬','回数','お礼']];
+  const inm=k=>k?(ITEMS[k]?ITEMS[k].name:k):'';
+  talkList().forEach(t=>talks.push([t.who,t.text,inm(t.want),inm(t.give),(t.want&&t.times!==1)?t.times:'',t.thanks||'']));
   const cfg=[['項目','値','説明']];
   CFG_DEFS.forEach(d=>cfg.push([d[0],CFG[d[1]],d[3]]));
   return ['#アイテム\n'+tsvRows(items),'#モンスター\n'+tsvRows(mons),'#会話\n'+tsvRows(talks),'#設定\n'+tsvRows(cfg)].join('\n\n');
@@ -449,6 +470,7 @@ function splitPages(text){
   probe.className='panel msgwin';
   probe.style.cssText='position:absolute;left:-9999px;top:0;visibility:hidden;height:auto;overflow:visible;width:'+box.offsetWidth+'px';
   const inner=document.createElement('div'), tn=document.createTextNode(text);
+  inner.style.whiteSpace='pre-wrap';
   inner.appendChild(tn); probe.appendChild(inner); box.parentNode.appendChild(probe);
   const rg=document.createRange(), starts=[0]; let top=null;
   for(let i=0;i<text.length;i++){
@@ -499,7 +521,7 @@ function freshState(){
     uid:1,
     hp:CFG.hp,maxHp:CFG.hp,energy:CFG.energy,maxEnergy:CFG.energy,atk:CFG.atk,def:CFG.def,skill:CFG.skill,
     gold:CFG.gold,debt:0,maxDepthReached:1,
-    backpack:[genInstance('club',1,true),genInstance('robe',1,true),genInstance('healPotion',1,true)],
+    backpack:['weapon','armor','potion'].map(t=>DEFAULT_SHOP.find(k=>ITEMS[k]&&ITEMS[k].type===t)).filter(Boolean).map(k=>genInstance(k,1,true)),
     backpackLimit:CFG.pack,
     equipment:{weapon:null,armor:null},
     shop:{},
@@ -533,8 +555,7 @@ function genInstance(key, depth, guaranteedSafe){
   const base = ITEMS[key];
   const it = {uid:uid(), key};
   if(base.type==='weapon'||base.type==='armor'){
-    it.level = Math.max(1, Math.round(depth*(0.6+Math.random()*0.8)));
-    it.maxDurability = Math.round(base.maxDur*(1+(it.level-1)*0.3));
+    it.maxDurability = base.maxDur;
     it.durability = it.maxDurability;
     it.junk=false;
     it.cursed = guaranteedSafe ? false : Math.random()<0.15;
@@ -550,7 +571,6 @@ function genInstance(key, depth, guaranteedSafe){
   }
   return it;
 }
-function setLevel(it,L){ const b=ITEMS[it.key]; it.level=L; it.maxDurability=Math.round(b.maxDur*(1+(L-1)*0.3)); it.durability=it.maxDurability; }
 function identifyItem(it){ it.identified=true; if(it.cursed) it.cursedRevealed=true; }
 function uncurseItem(it){
   if(!it.cursed) return false;
@@ -576,19 +596,15 @@ function dispName(it){
   let base=b.name;
   if(b.effect==='random') base=EFFECT_NAMES[it.effect]||b.name;
   let n = base;
-  if(b.type==='weapon'||b.type==='armor') n+=' Lv'+it.level;
   if(it.cursedRevealed) n+='(呪)';
   return n;
 }
 function refPrice(it){
   if(it.junk || it.key==='junk') return 1;
   const b=ITEMS[it.key];
-  if(b.type==='weapon'||b.type==='armor'){
-    return priceFor(it.key, it.level||1);
-  }
   return b.price;
 }
-function priceFor(key,level){ return Math.round(ITEMS[key].price*(1+(level-1)*0.5)); }
+function priceFor(key){ return ITEMS[key].price; }
 
 // ===================== 画面描画 =====================
 const app=document.getElementById('app');
@@ -866,10 +882,8 @@ function renderShopBuy(){
     const b=ITEMS[k], cat=S.shop[k], inf=isInfinite(k);
     if(!inf && !cat) return '';
     const stock = inf ? '∞' : cat.stock;
-    const isEq = (b.type==='weapon'||b.type==='armor');
-    const lv = isEq && cat ? (cat.level||1) : 1;
-    const price = priceFor(k,lv);
-    const label = isEq ? `${b.name} Lv${lv}` : b.name;
+    const price = priceFor(k);
+    const label = b.name;
     return `<button ${stock===0?'disabled':''} onclick="buyItem('${k}')">${label} <span class="tag">${price}G</span> <span class="tag">在庫${stock}</span></button>`;
   }).join('');
   return hudBlock()+`<div class="panel">${rows||'<p class="sub">商品がありません</p>'}
@@ -879,14 +893,11 @@ function buyItem(key){
   if(key==='junk') return;
   const cat=S.shop[key], inf=isInfinite(key);
   if(!inf && (!cat||cat.stock<=0)){ toast('在庫切れです'); return; }
-  const isEq=(ITEMS[key].type==='weapon'||ITEMS[key].type==='armor');
-  const lv = isEq && cat ? (cat.level||1) : 1;
-  const price=priceFor(key,lv);
+  const price=priceFor(key);
   if(S.gold<price){ toast('所持金が足りません'); return; }
   if(S.backpack.length>=S.backpackLimit){ toast('バックパックが満杯です'); return; }
   S.gold-=price; if(!inf) cat.stock-=1;
   const ni=genInstance(key, 1, true);
-  if(isEq) setLevel(ni,lv);
   S.backpack.push(ni);
   toast(dispName(ni)+'を購入した。');
 }
@@ -916,9 +927,7 @@ function sellItem(u){
   const isJunkItem = (it.junk || it.key==='junk');
   S.gold+=price; S.backpack.splice(idx,1);
   if(!isJunkItem){
-    const cat=S.shop[it.key]||{level:1,stock:0};
-    const isEq=(ITEMS[it.key].type==='weapon'||ITEMS[it.key].type==='armor');
-    cat.level = isEq ? Math.max(cat.level||1, it.level||1) : 1;
+    const cat=S.shop[it.key]||{stock:0};
     cat.stock+=1;
     S.shop[it.key]=cat;
     toast(dispName(it)+'を'+price+'Gで売却した。');
@@ -1013,18 +1022,68 @@ const TALKS=[
  '傭兵:「深層ガーディアンを見たことがあるか。あれは元々、門番だったらしい。最深部のボスを守っているのかもな。」',
  '老いた整備士:「武器も防具も、壊れる前に修理屋へ持ってこい。一度ガラクタになったらもう二度と元には戻らん。」',
 ];
-let lastTalk=-1;
-function enterLounge(){ gotoScreen('lounge','【宿のラウンジ】常連たちが思い思いに話している。'); }
-function leaveLounge(){ gotoScreen('inn','【宿】ロビーに戻った。'); }
-function talk(){
-  const T=CUSTOM_TALKS||TALKS;
-  let i; do{ i=Math.floor(Math.random()*T.length); }while(i===lastTalk && T.length>1);
-  lastTalk=i; toastMsg=T[i]; render();
+function enterLounge(){ S.loungeSel=null; gotoScreen('lounge','【宿のラウンジ】常連たちが思い思いに話している。'); }
+function leaveLounge(){ S.loungeSel=null; gotoScreen('inn','【宿】ロビーに戻った。'); }
+function talkList(){
+  return (CUSTOM_TALKS||TALKS).map(t=>{
+    if(typeof t!=='string') return t;
+    const m=t.match(/^(.+?):「([\s\S]*)」$/);
+    return {who:m?m[1]:'', text:m?m[2]:t, want:'', give:'', times:1, thanks:''};
+  });
+}
+function talkLabels(L){
+  const cnt={}, seen={};
+  L.forEach(t=>{ cnt[t.who]=(cnt[t.who]||0)+1; });
+  return L.map(t=>{
+    const n=t.who||'？';
+    if(cnt[t.who]>1){ seen[t.who]=(seen[t.who]||0)+1; return n+'('+seen[t.who]+')'; }
+    return n;
+  });
+}
+function talkKey(t){ return t.who+'|'+t.text; }
+function talkDone(t){ return (S.lounge&&S.lounge[talkKey(t)])||0; }
+function talkLimit(t){ return t.times===0 ? Infinity : Math.max(1,t.times||1); }
+function talkHasTrade(t){ return !!(t.want && t.give && ITEMS[t.want] && ITEMS[t.give]); }
+// 渡せる品: 鑑定済みで一致するもの(複数あれば最も傷んだ物)
+function talkGiveItem(t){
+  const c=S.backpack.filter(i=>i.key===t.want && i.identified);
+  c.sort((x,y)=>(x.durability/x.maxDurability||1)-(y.durability/y.maxDurability||1));
+  return c[0]||null;
+}
+function talkTo(i){
+  const t=talkList()[i]; if(!t) return;
+  S.loungeSel=(S.loungeSel===i)?null:i;
+  if(S.loungeSel!==null) toastMsg=t.who?t.who+':「'+t.text+'」':t.text;
+  render();
+}
+function talkTrade(yes){
+  const t=talkList()[S.loungeSel]; if(!t) return;
+  if(!yes){ S.loungeSel=null; toastMsg='渡さなかった。'; render(); return; }
+  const it=talkGiveItem(t);
+  if(!talkHasTrade(t) || !it || talkDone(t)>=talkLimit(t)) return;
+  const wn=dispName(it);
+  S.backpack.splice(S.backpack.findIndex(x=>x.uid===it.uid),1);
+  const ni=genInstance(t.give,1,true); S.backpack.push(ni);
+  S.lounge=S.lounge||{}; S.lounge[talkKey(t)]=talkDone(t)+1;
+  toastMsg=(t.thanks?(t.who?t.who+':「'+t.thanks+'」':t.thanks)+'\n':'')+wn+'を渡して、'+dispName(ni)+'を受け取った。';
+  render();
 }
 function renderLounge(){
+  const L=talkList(), labels=talkLabels(L);
+  const rows=L.map((t,i)=>{
+    const sel=S.loungeSel===i, tr=talkHasTrade(t), done=tr&&talkDone(t)>=talkLimit(t);
+    const tag=tr?(done?' <span class="tag">済</span>':' <span class="tag">依頼</span>'):'';
+    let extra='';
+    if(sel && tr){
+      const it=done?null:talkGiveItem(t);
+      extra=`<p class="sub">「${ITEMS[t.want].name}」を渡すと「${ITEMS[t.give].name}」がもらえる。${done?'(済)':(it?'':'(手元に鑑定済みの品がない)')}</p>`
+        +(it?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:0 0 8px"><button style="text-align:center;margin:0" onclick="talkTrade(true)">渡す</button><button style="text-align:center;margin:0" onclick="talkTrade(false)">渡さない</button></div>`:'');
+    }
+    return `<button onclick="talkTo(${i})" ${sel?'style="border-style:double;border-width:3px"':''}>${labels[i]}${tag}</button>`+extra;
+  }).join('');
   return hudBlock()+`<div class="panel">
-    <p class="sub">宿のラウンジ。常連たちが思い思いに話している。</p>
-    <button class="primary" onclick="talk()">話を聞く</button>
+    <p class="sub">宿のラウンジ。話しかける相手を選ぼう。</p>
+    ${rows}
     <button class="ghost" onclick="leaveLounge()">戻る</button></div>`;
 }
 
@@ -1252,12 +1311,12 @@ function enterCombat(){
 function weaponPower(){
   const w=S.equipment.weapon;
   if(!w||w.junk||w.key==='junk') return 0;
-  return ITEMS[w.key].power * w.level;
+  return ITEMS[w.key].power;
 }
 function armorPower(){
   const a=S.equipment.armor;
   if(!a||a.junk||a.key==='junk') return 0;
-  return Math.round(ITEMS[a.key].power*(1+((a.level||1)-1)*0.5));
+  return ITEMS[a.key].power;
 }
 function atkTotal(){ return S.atk + weaponPower(); }
 // ドラクエ式: 基本値=攻撃力/2-守備力/4、幅=基本値/16+1、実ダメージ=基本値±幅（最低1）
@@ -1493,7 +1552,7 @@ function useOnSelf(u){
   if(it.junk || it.key==='junk'){ note('ガラクタは使えない。'); return; }
   if(b.type==='potion'){
     it.identified=true;
-    if(it.effect==='heal'){ const heal=Math.min(S.maxHp-S.hp,b.val||15); S.hp+=heal; note(heal+'回復した。'); }
+    if(it.effect==='heal'){ const heal=Math.min(S.maxHp-S.hp,b.val||15); S.hp+=heal; note('HPが'+heal+'回復した。'); }
     else if(it.effect==='energy'){ const g=Math.min(S.maxEnergy-S.energy,b.val||10); S.energy+=g; note('エネルギーが'+g+'回復した。'); }
     else if(it.effect==='cureCurse'){
       const cw = (S.equipment.weapon && S.equipment.weapon.cursed) ? S.equipment.weapon : null;
@@ -1508,6 +1567,8 @@ function useOnSelf(u){
     const n=1+Math.floor(Math.random()*(b.val||3));
     if(b.effect==='seedHp'){ S.maxHp+=n; S.hp+=n; note(b.name+'を使った！ 最大HPが'+n+'上がった。'); }
     else if(b.effect==='seedEn'){ S.maxEnergy+=n; S.energy+=n; note(b.name+'を使った！ 最大エネルギーが'+n+'上がった。'); }
+    else if(b.effect==='seedAtk'){ S.atk+=n; note(b.name+'を使った！ ATKが'+n+'上がった。'); }
+    else if(b.effect==='seedDef'){ S.def+=n; note(b.name+'を使った！ DEFが'+n+'上がった。'); }
     else { S.skill+=n; note(b.name+'を使った！ 技能が'+n+'上がった。'); }
     S.backpack.splice(idx,1);
   } else if(b.effect==='identify'||b.effect==='removeCurse'){
@@ -1529,13 +1590,13 @@ async function throwAtEnemy(u){
   const nm=dispName(it);
   let hit=false;
   if(!isJunkItem && (b.type==='weapon'||b.type==='armor')){
-    const dmg=Math.max(1, Math.round((b.power||2)*(it.level||1)*1.2) - Math.floor((m.def||0)*0.5));
+    const dmg=Math.max(1, Math.round((b.power||2)*1.2) - Math.floor((m.def||0)*0.5));
     m.hp-=dmg; hit=true; pushLogSafe(nm+'を投げつけた！ '+dmg+'ダメージ。');
   } else if(!isJunkItem && b.type==='potion'){
     if(it.effect==='heal'){
       const hv=b.val||15;
       if(m.undead){ m.hp-=hv; hit=true; pushLogSafe(nm+'を浴びせた！ アンデッドに'+hv+'ダメージ。'); }
-      else { const g=Math.min(m.maxHp-m.hp,hv); m.hp+=g; pushLogSafe(nm+'を投げつけた…敵が'+g+'回復してしまった。'); }
+      else { const g=Math.min(m.maxHp-m.hp,hv); m.hp+=g; pushLogSafe(nm+'を投げつけた…敵のHPが'+g+'回復してしまった。'); }
     } else pushLogSafe(nm+'を投げつけたが、効果はなかった。');
   } else {
     pushLogSafe(nm+'を投げつけたが、効果はなかった。');
