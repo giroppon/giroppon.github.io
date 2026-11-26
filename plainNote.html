@@ -158,7 +158,9 @@ function vv(){
   if(!v)return;
   s.setProperty("--vt",v.offsetTop+"px");s.setProperty("--vh",v.height+"px");
   document.documentElement.classList.toggle("kb",window.innerHeight-v.height>120);
+  if(Math.abs(v.height-lastVh)>1){lastVh=v.height;caretLater()}
 }
+var lastVh=0;
 function vvLater(){vv();[60,200,450,800].forEach(function(ms){setTimeout(vv,ms)})}
 if(window.visualViewport){window.visualViewport.addEventListener("resize",vv);window.visualViewport.addEventListener("scroll",vv)}
 window.addEventListener("resize",vvLater);
@@ -326,10 +328,34 @@ function jump(toEnd){
   if(wasRO&&document.activeElement===ed)ed.blur();
   ed.focus({preventScroll:true});
   var n=toEnd?ed.value.length:0;
-  function place(){ed.setSelectionRange(n,n);ed.scrollTop=toEnd?ed.scrollHeight:0}
+  function place(){ed.setSelectionRange(n,n);ed.scrollTop=toEnd?ed.scrollHeight:0;ensureCaret()}
   place();vvLater();
   [60,200,450].forEach(function(ms){setTimeout(function(){if(document.activeElement===ed)place()},ms)});
 }
+/* カーソルが隠れないよう、文字カウントの上あたりまでスクロール */
+var caretT=null;
+function ensureCaret(){
+  if($("s-edit").hidden||document.activeElement!==ed)return;
+  var pos=(ed.selectionDirection==="backward")?ed.selectionStart:ed.selectionEnd;
+  var lh=parseFloat(getComputedStyle(ed).lineHeight)||28;
+  var y=yOf(pos),top=y,bottom=y+lh;
+  var cc=$("ccount"),margin=(cc?cc.offsetHeight:26)+18;
+  var viewH=ed.clientHeight;
+  if(bottom>ed.scrollTop+viewH-margin){ed.scrollTop=bottom-viewH+margin}
+  else if(top<ed.scrollTop+8){ed.scrollTop=Math.max(0,top-8)}
+}
+function caretLater(){
+  clearTimeout(caretT);
+  ensureCaret();
+  [80,250,500].forEach(function(ms){setTimeout(ensureCaret,ms)});
+}
+var selT=null;
+document.addEventListener("selectionchange",function(){
+  if(document.activeElement!==ed)return;
+  clearTimeout(selT);selT=setTimeout(ensureCaret,120);
+});
+ed.addEventListener("focus",caretLater);
+ed.addEventListener("input",ensureCaret);
 $("b-top").onclick=function(){jump(false)};
 $("b-bot").onclick=function(){jump(true)};
 
